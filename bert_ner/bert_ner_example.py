@@ -146,7 +146,7 @@ train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True
 # --- Training Setup ---
 optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
 # Check for GPU and move the model and data to the appropriate device
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 model.to(device)
 
 # --- Training Loop ---

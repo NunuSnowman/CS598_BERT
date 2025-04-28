@@ -1,5 +1,5 @@
 from bert_ner.bert_common import *
-from bert_ner.bert_ner_v1 import process_data
+from bert_ner.bert_ner_train import process_data
 
 device = torch.device("cpu")
 tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)

@@ -1,15 +1,9 @@
 from bert_ner.bert_common import *
 
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)
-model = BertForTokenClassification.from_pretrained(MODEL_NAME, num_labels=num_labels)
 
-
-
-if __name__ == "__main__":
-    # --- Process Training Data ---
+def train(data: LabeledData, tokenizer, model, save_directory=SAVE_DIRECTORY):
     print("Processing training data...")
-    train_processed = process_data(train_data, tokenizer, label_map, MAX_LENGTH)
+    train_processed = process_data(data, tokenizer, label_map, MAX_LENGTH)
 
     # --- Create TensorDataset and DataLoader ---
     train_dataset = TensorDataset(
@@ -22,6 +16,7 @@ if __name__ == "__main__":
     # --- Training Setup ---
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
     # Check for GPU and move the model and data to the appropriate device
+    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     model.to(device)
 
     # --- Training Loop ---
@@ -61,6 +56,12 @@ if __name__ == "__main__":
 
         avg_loss = total_loss / len(train_dataloader)
         print(f"Epoch {epoch+1} Complete, Average Loss: {avg_loss:.4f}")
-    print(f"\nSaving model to {SAVE_DIRECTORY}...")
-    model.save_pretrained(SAVE_DIRECTORY)
+    print(f"\nSaving model to {save_directory}...")
+    model.save_pretrained(save_directory)
     print("Model saved.")
+
+if __name__ == "__main__":
+    tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)
+    model = BertForTokenClassification.from_pretrained(MODEL_NAME, num_labels=num_labels)
+    train(test_data, tokenizer, model, save_directory=SAVE_DIRECTORY)
+

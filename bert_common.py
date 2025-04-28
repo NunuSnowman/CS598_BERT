@@ -13,9 +13,9 @@ from common import ProcessedRecord, MaskInfo # Assuming common.py contains these
 # --- Configuration ---
 MODEL_NAME = 'bert-base-uncased'
 MAX_LENGTH = 128 # Max sequence length for tokenization and padding
-BATCH_SIZE = 8   # Increased batch size for efficiency
-NUM_EPOCHS = 3   # Train for more epochs
-LEARNING_RATE = 2e-5
+BATCH_SIZE = 32   # Increased batch size for efficiency
+NUM_EPOCHS = 50   # Train for more epochs
+LEARNING_RATE = 1e-4
 SAVE_DIRECTORY = "./tmp/saved_models"
 
 label_map = {'O': 0, 'B-NAME': 1, 'I-NAME': 2,

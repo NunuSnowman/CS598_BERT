@@ -1,5 +1,5 @@
 from bert_ner.bert_common import *
-from bert_ner.bert_ner_train import process_data
+from bert_ner.bert_ner_train import process_data_label
 import torch
 
 
@@ -12,7 +12,7 @@ def simplify_label(label_id):
         return original_label[2:]
 
 
-def evaluate_model(data: LabeledData, tokenizer, model):
+def evaluate_model(data: [ProcessedRecord], tokenizer, model):
     device = torch.device("cpu")
 
     print("\n--- Testing (Evaluation) ---")
@@ -21,7 +21,7 @@ def evaluate_model(data: LabeledData, tokenizer, model):
     print("Processing test data...")
 
     # This part remains the same for getting overall predictions for the classification report
-    test_processed = process_data(data, tokenizer, label_map, MAX_LENGTH)
+    test_processed = process_data_label(data, tokenizer, MAX_LENGTH)
 
     test_dataset = TensorDataset(
         test_processed['input_ids'],
@@ -59,7 +59,8 @@ def evaluate_model(data: LabeledData, tokenizer, model):
     print("\n--- Predicted Entities ---")
 
     token_index_in_flattened_list = 0 # To keep track of our position in the flattened prediction lists
-    for sentence_index, (original_text, _) in enumerate(data):
+    for sentence_index, processed_data in enumerate(data):
+        original_text = processed_data.text_record
         encoded_inputs = tokenizer(
             original_text,
             padding="max_length",

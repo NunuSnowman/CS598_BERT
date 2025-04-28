@@ -1,9 +1,9 @@
 from bert_ner.bert_common import *
 
 
-def train(data: LabeledData, tokenizer, model, save_directory=SAVE_DIRECTORY):
+def train(data: [ProcessedRecord], tokenizer, model, save_directory=SAVE_DIRECTORY):
     print("Processing training data...")
-    train_processed = process_data(data, tokenizer, label_map, MAX_LENGTH)
+    train_processed = process_data_label(data, tokenizer, MAX_LENGTH)
 
     # --- Create TensorDataset and DataLoader ---
     train_dataset = TensorDataset(

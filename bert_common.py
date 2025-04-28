@@ -16,7 +16,7 @@ MAX_LENGTH = 128 # Max sequence length for tokenization and padding
 BATCH_SIZE = 8   # Increased batch size for efficiency
 NUM_EPOCHS = 50   # Train for more epochs
 LEARNING_RATE = 2e-5
-SAVE_DIRECTORY = "./saved_ner_model"
+SAVE_DIRECTORY = "./tmp/saved_models"
 
 label_map = {'O': 0, 'B-NAME': 1, 'I-NAME': 2,
              'B-LOCATION': 3, 'I-LOCATION': 4,

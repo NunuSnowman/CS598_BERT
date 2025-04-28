@@ -1,5 +1,5 @@
-from bert_ner.bert_common import *
-from bert_ner.bert_ner_train import process_data_label
+from bert_common import *
+from bert_ner_train import process_data_label
 import torch
 
 

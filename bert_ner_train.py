@@ -1,4 +1,4 @@
-from bert_ner.bert_common import *
+from bert_common import *
 
 
 def train(data: [ProcessedRecord], tokenizer, model, save_directory=SAVE_DIRECTORY):
@@ -57,6 +57,8 @@ def train(data: [ProcessedRecord], tokenizer, model, save_directory=SAVE_DIRECTO
         avg_loss = total_loss / len(train_dataloader)
         print(f"Epoch {epoch+1} Complete, Average Loss: {avg_loss:.4f}")
     print(f"\nSaving model to {save_directory}...")
+    import os
+    os.makedirs(save_directory, exist_ok=True)
     model.save_pretrained(save_directory)
     print("Model saved.")
 

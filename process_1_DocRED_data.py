@@ -1,155 +1,144 @@
 import json
 import os
-import argparse
+import re
 
-# Set up argument parser for input and output paths
-parser = argparse.ArgumentParser(description='Pseudo de-identify DocRED data by masking person names.')
-parser.add_argument('--in_path', type=str, default="downloaded/DocRED/data", help='Path to the directory containing DocRED data files.')
-# Using the requested output path
-parser.add_argument('--out_path', type=str, default="data/DocREDv2", help='Path to the directory to save processed data.')
-parser.add_argument('--data_file_name', type=str, default="train_distant.json", help='Name of the DocRED data file to process (e.g., train_distant.json, dev.json).')
+# --- Configuration ---
+# Set these paths according to your environment
+in_path = "downloaded/DocRED/data" # Path to the directory containing DocRED data files.
+out_path = "data/DocREDv2" # Path to the directory to save processed data.
+data_file_name = "train_distant.json" # Name of the DocRED data file to process.
+output_file_name = "processed_data.jsonl" # Name of the output JSONL file.
+# --- End Configuration ---
 
-args = parser.parse_args()
-
-in_path = args.in_path
-out_path = args.out_path # Use the potentially overridden out_path from args
-data_file_name = args.data_file_name
-
-# Construct the full path to the input data file
+# Construct the full path to the input data file and output file
 data_file = os.path.join(in_path, data_file_name)
+output_file = os.path.join(out_path, output_file_name)
 
 # Ensure the output directory exists
 os.makedirs(out_path, exist_ok=True)
 
-def pseudo_de_identify_docred(data_file, out_path):
+def pseudo_de_identify_docred_single_file(data_file, output_file):
     """
     Reads a DocRED data file, masks person names with item-specific IDs,
-    saves the original text, masked text, and name mapping per item.
+    and saves the original text, masked text, and mask details to a single JSONL file.
 
     Args:
         data_file (str): Path to the input DocRED JSON file.
-        out_path (str): Path to the directory to save the output files.
+        output_file (str): Path to the output JSONL file.
     """
-    print(f"Loading data from: {data_file}")
+    print(f"Attempting to load data from: {data_file}")
     try:
         with open(data_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
     except FileNotFoundError:
-        print(f"Error: Input file not found at {data_file}")
+        print(f"Error: Input file not found at {data_file}. Please ensure the file exists at this path.")
         return
     except json.JSONDecodeError:
         print(f"Error: Could not decode JSON from {data_file}. Ensure it's a valid JSON file.")
         return
 
-    # Lists to store data for each record (item)
-    original_texts = [] # New list for original texts
-    masked_texts = []
-    item_name_mappings = []
+    processed_records = []
 
     print(f"Processing {len(data)} records...")
 
-    # Process each record (item) in the dataset
     for item_idx, item in enumerate(data):
-        # DocRED data structure: item['sents'] is a list of sentences,
-        # each sentence is a list of words.
         sents = item.get('sents', [])
-        # item['vertexSet'] contains lists of entities (vertices)
         vertex_set = item.get('vertexSet', [])
 
         # --- Prepare Original Text ---
-        # Join the original sentences into a single string for this item
-        # sents is a list of lists of words, e.g., [['Word1', 'Word2'], ['Word3', 'Word4']]
-        # First join words in each sentence, then join sentences with a space
         original_item_text = ' '.join([' '.join(s) for s in sents])
-        original_texts.append(original_item_text)
-
 
         # --- Logic for item-specific name mapping and masking ---
         item_name_mapping = {} # Mapping for names in THIS item: Masked Token -> Original Name
         used_names_in_item = {} # Mapping for names in THIS item: Original Name -> Masked Token
         item_name_counter = 1 # Counter for generating IDs within THIS item
 
-        # First pass: identify all unique person names in this item and assign masked tokens
-        # We use the original words from sents to find matches within vertex names
         all_words_in_item = [word for sentence in sents for word in sentence]
 
         for vertex_list in vertex_set:
             for vertex in vertex_list:
-                # Check if the entity type is 'PER' (Person)
-                # Note: Vertex names might span multiple words or match substrings.
-                # This simple approach matches exact word tokens found in sentences
-                # if they are also listed as a vertex name. More complex matching
-                # might be needed for full de-identification but this matches the original script's logic.
                 if vertex.get('type') == 'PER':
                     name = vertex.get('name')
                     # Check if the name is a single word and appears in the sentences
                     # and has not been assigned an ID yet for this item
                     if name and ' ' not in name and name in all_words_in_item and name not in used_names_in_item:
-                        # Assign a new ID unique to this item
                         name_id = f"{item_name_counter}"
-                        # Create the masked token string
                         masked_token = f"[***NAME {name_id}***]"
-                        # Store mapping from masked token to original name
                         item_name_mapping[masked_token] = name
-                        # Store mapping from original name to masked token for quick lookup during masking
                         used_names_in_item[name] = masked_token
                         item_name_counter += 1
 
-
-        # Second pass: mask the names in the sentences using item-specific masked tokens
+        # --- Masking and Generating Mask Details ---
         masked_sents = []
+        masks = []
+        current_offset = 0 # Keep track of the current index in the original text
+
         for sentence in sents:
-            # Create a copy of the sentence (list of words) to modify
-            masked_sentence = sentence[:]
+            masked_sentence = []
+            # Join words with a space, handling potential empty sentences or words
+            sentence_text = ' '.join(word for word in sentence)
+            word_offset = 0 # Keep track of index within the current sentence_text
+
             for i, word in enumerate(sentence):
-                # Check if the word is one of the person names identified in this item
-                if word in used_names_in_item:
-                    # Get the pre-generated masked token for this name
-                    masked_token = used_names_in_item[word]
-                    # Replace the word with the masked token
-                    masked_sentence[i] = masked_token
-            # Join the words in the masked sentence back into a string
+                # Find the exact word in the sentence_text starting from the current word_offset
+                original_word_start_in_sentence = sentence_text.find(word, word_offset)
+
+                if original_word_start_in_sentence != -1:
+                    original_word_end_in_sentence = original_word_start_in_sentence + len(word)
+
+                    if word in used_names_in_item:
+                        masked_token = used_names_in_item[word]
+                        # Create the mask detail corresponding to the MaskResult structure
+                        mask_detail = {
+                            "label": word,          # The content inside the mask (original name)
+                            "text": word,           # The matched text from the original record (original name)
+                            "start": current_offset + original_word_start_in_sentence, # Start index in the original text record
+                            "end": current_offset + original_word_end_in_sentence,     # End index in the original text record
+                            "masked_text": masked_token # The original mask string
+                        }
+                        masks.append(mask_detail)
+                        masked_sentence.append(masked_token)
+                    else:
+                        masked_sentence.append(word)
+
+                    # Update word_offset for the next search within the sentence_text
+                    word_offset = original_word_end_in_sentence + (1 if i < len(sentence) - 1 else 0) # +1 for space if not the last word
+                else:
+                    # If the word was not found, append it as is and move offset past it
+                    masked_sentence.append(word)
+                    word_offset += len(word) + (1 if i < len(sentence) - 1 else 0)
+
+
             masked_sents.append(' '.join(masked_sentence))
+            # Update current_offset for the next sentence
+            current_offset += len(sentence_text) + (1 if sents.index(sentence) < len(sents) - 1 else 0) # +1 for space between sentences if not the last sentence
 
-        # Join all masked sentences for this item into a single string
-        masked_texts.append(' '.join(masked_sents))
 
-        # Store the name mapping specific to this item
-        item_name_mappings.append(item_name_mapping)
+        masked_item_text = ' '.join(masked_sents)
+
+        # --- Construct the output JSON object for this record ---
+        record_json = {
+            "res_record": masked_item_text,
+            "text_record": original_item_text,
+            "masks": masks
+        }
+        processed_records.append(record_json)
 
         # Optional: Print progress
         if (item_idx + 1) % 1000 == 0:
             print(f"Processed {item_idx + 1}/{len(data)} records.")
 
+    # --- Saving the processed data to a single JSONL file ---
+    print(f"\nSaving processed data to: {output_file}")
+    try:
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for record in processed_records:
+                json.dump(record, f, ensure_ascii=False)
+                f.write('\n')
+        print(f"\nProcessing complete. Processed data saved to: {output_file}")
+    except IOError as e:
+        print(f"Error: Could not write to output file {output_file}. Reason: {e}")
 
-    # --- Saving the processed data ---
-
-    # Save original texts, one record per line (NEW FILE)
-    original_text_file = os.path.join(out_path, 'original_data.txt')
-    print(f"\nSaving original data to: {original_text_file}")
-    with open(original_text_file, 'w', encoding='utf-8') as f:
-        for line in original_texts:
-            f.write(line + '\n')
-
-    # Save masked texts, one record per line (Existing file, potentially renamed for clarity later if needed)
-    masked_text_file = os.path.join(out_path, 'masked_data.txt') # Keeping original name for now
-    print(f"Saving masked data to: {masked_text_file}")
-    with open(masked_text_file, 'w', encoding='utf-8') as f:
-        for line in masked_texts:
-            f.write(line + '\n')
-
-    # Save name mappings, one JSON object per record per line (JSON Lines format)
-    name_mapping_file = os.path.join(out_path, 'mapping.jsonl') # Keeping original name for now
-    print(f"Saving name mappings to: {name_mapping_file}")
-    with open(name_mapping_file, 'w', encoding='utf-8') as f:
-        for mapping in item_name_mappings:
-            json.dump(mapping, f, ensure_ascii=False) # ensure_ascii=False to handle non-ASCII names
-            f.write('\n')
-
-    print("\nProcessing complete.")
-    print(f"Original data saved to: {original_text_file}")
-    print(f"Masked data saved to: {masked_text_file}")
-    print(f"Name mapping saved to: {name_mapping_file}")
 
 # --- Execute the function ---
-pseudo_de_identify_docred(data_file, out_path)
+pseudo_de_identify_docred_single_file(data_file, output_file)

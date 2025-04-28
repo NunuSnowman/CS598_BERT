@@ -2,26 +2,25 @@ import re
 import dataclasses
 import json # For pretty printing results
 
+from common import MaskResult
+
 # Assuming MASK_TOKEN_PATTERN is defined elsewhere, e.g.:
 # Modified pattern to capture the full mask string (group 1) and the label (group 2)
 MASK_TOKEN_PATTERN = re.compile(r"(\[\*\*(.*?)\*\*\])")
-
-@dataclasses.dataclass
-class MaskResult:
-    """Represents a single masked segment found and its corresponding text."""
-    label: str          # The content inside the mask, e.g., "First Name"
-    text: str           # The matched text from the original record
-    start: int          # Start index in the original text record (inclusive)
-    end: int            # End index in the original text record (exclusive)
-    masked_text: str    # The original mask string from the res record, e.g., "[**First Name**]"
-
 
 class RecordProcessor:
     def __init__(self, res_record: str, text_record: str):
         self.res_record = res_record
         self.text_record = text_record
+        self.masks: list[MaskResult] = self._map_record()
         self._parsed_segments = None # Stores the parsed segments of res_record
-        self._results: list[MaskResult] = [] # Stores the desired output: list of MaskResult objects
+
+    def to_dict(self):
+        return {
+            "res_record": self.res_record,
+            "text_record": self.text_record,
+            "masks": self.masks,
+        }
 
     def _parse_res_segments(self):
         """
@@ -105,7 +104,7 @@ class RecordProcessor:
             # If there is only one mask, assign the entire text segment to it
             full_mask_string, mask_label = mask_details_list[0]
             # The start and end are simply the boundaries of the text segment provided
-            self._results.append(MaskResult(
+            self.masks.append(MaskResult(
                 label=mask_label,
                 text=full_text_segment,
                 start=text_segment_start_in_text,
@@ -153,7 +152,7 @@ class RecordProcessor:
 
 
                 # Record the result
-                self._results.append(MaskResult(
+                self.masks.append(MaskResult(
                     label=mask_label,
                     text=assigned_text,
                     # Add the segment's start offset to get the absolute position in text_record
@@ -172,7 +171,7 @@ class RecordProcessor:
                     current_char_pos_in_segment = sum(len(w) + 1 for w in words[:word_idx])
 
 
-    def map_record(self) -> list[MaskResult]:
+    def _map_record(self) -> list[MaskResult]:
         """
         Executes the record parsing and alignment process, generating detailed results.
 
@@ -180,7 +179,7 @@ class RecordProcessor:
             list[MaskResult]: A list of MaskResult objects for each identified mask.
                               Returns an empty list if alignment fails critically.
         """
-        self._results = [] # Reset results for each call
+        self.masks = [] # Reset results for each call
         self._parsed_segments = self._parse_res_segments()
         text_current_pos = 0 # Pointer, tracks position in text_record
 
@@ -193,8 +192,8 @@ class RecordProcessor:
 
                 if anchor_match_start_in_text == -1:
                     print(f"Warning: Anchor '{anchor[:50]}...' not found in text after pos {text_current_pos}. Alignment likely broken for this record.")
-                    self._results = [] # Clear results to indicate failure
-                    return self._results # Interrupt processing
+                    self.masks = [] # Clear results to indicate failure
+                    return self.masks # Interrupt processing
 
                 anchor_match_end_in_text = anchor_match_start_in_text + len(anchor)
 
@@ -244,8 +243,8 @@ class RecordProcessor:
                 print(f"Warning: Trailing non-empty text found in text_record but no corresponding segments in res_record: '{trailing_text[:50]}...' starting at index {text_current_pos}")
                 # Decide if this constitutes an alignment failure or just unexpected extra text.
 
-        return self._results
-    def validate_mapping(self, results: list[MaskResult]) -> bool:
+        return self.masks
+    def validate_mapping(self) -> bool:
         """
         Validates the mapping by reconstructing the masked text record from the results
         and comparing it to the original res_record.
@@ -256,6 +255,7 @@ class RecordProcessor:
         Returns:
             True if the reconstructed masked text matches the original res_record, False otherwise.
         """
+        results: list[MaskResult] = self.masks
         if not results and not self.res_record and not self.text_record:
             # Both empty, considered valid alignment
             return True
@@ -302,8 +302,7 @@ if __name__ == "__main__":
 
     def run_test_case(name: str, res: str, text: str):
         processor = RecordProcessor(res, text)
-        results = processor.map_record()
-        print("Results:", processor.validate_mapping(results))
+        print("Results:", processor.validate_mapping())
         # print(json.dumps([dataclasses.asdict(r) for r in results], indent=2))
 
     # Test Case 1: Basic case

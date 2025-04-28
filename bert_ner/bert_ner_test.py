@@ -51,11 +51,20 @@ with torch.no_grad(): # Disable gradient calculation for inference
 try:
     from sklearn.metrics import classification_report
     label_names = [id_to_label[i] for i in range(num_labels)]
+    def simplify_label(label_id):
+        original_label = id_to_label[label_id]
+        if original_label == 'O':
+            return 'OTHER'
+        else:
+            # Remove B- and I- prefixes
+            return original_label[2:]
+    simplified_true_labels = [simplify_label(label) for label in all_true_labels]
+    simplified_predicted_labels = [simplify_label(label) for label in all_predicted_labels]
+    report_target_names = sorted(list(set(simplified_true_labels + simplified_predicted_labels)))
 
     print("\nClassification Report:")
-    print(classification_report(all_true_labels, all_predicted_labels,
-                                labels=[i for i in range(num_labels) if id_to_label[i] != 'O'], # Exclude 'O' from metrics
-                                target_names=[id_to_label[i] for i in range(num_labels) if id_to_label[i] != 'O'],
+    print(classification_report(simplified_true_labels, simplified_predicted_labels,
+                                target_names=report_target_names,
                                 zero_division=0)) # Handle cases where a label has no true/predicted instances
 
 except ImportError:

@@ -12,7 +12,7 @@ def validate_mapping(record: ProcessedRecord) -> bool:
     Returns:
         True if the reconstructed masked text matches the original res_record, False otherwise.
     """
-    results = record.masks
+    results = record.mask_info
 
     if not results and not record.res_record and not record.text_record:
         # Both empty, considered valid alignment

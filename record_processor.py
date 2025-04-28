@@ -244,7 +244,7 @@ class RecordProcessor:
         return ProcessedRecord(
             res_record=self.res_record,
             text_record=self.text_record,
-            masks=self.masks
+            mask_info=self.masks
         )
 # --- Test Cases ---
 if __name__ == "__main__":

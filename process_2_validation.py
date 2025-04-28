@@ -19,16 +19,7 @@ class RecordValidator:
         """
         print(f"Starting validation for JSONL files in: {data_folder_path}")
 
-        if not os.path.isdir(data_folder_path):
-            print(f"Error: Data folder not found at {data_folder_path}")
-            return
-
         jsonl_files = [f for f in os.listdir(data_folder_path) if f.endswith('.jsonl')]
-
-        if not jsonl_files:
-            print(f"No .jsonl files found in {data_folder_path}")
-            return
-
         total_records_validated = 0
         failed_validations = 0
 
@@ -44,10 +35,10 @@ class RecordValidator:
 
                         # Convert dictionary to ProcessedRecord object
                         # Need to manually convert masks list items to MaskInfo objects
-                        masks_list_of_dicts = record_dict.get('masks', [])
+                        masks_list_of_dicts = record_dict.get('mask_info', [])
                         # Ensure masks is a list before attempting list comprehension
                         if not isinstance(masks_list_of_dicts, list):
-                            print(f"Validation Error: 'masks' field is not a list on line {line_num} in {file_name}. Skipping record.")
+                            print(f"Validation Error: 'mask_info' field is not a list on line {line_num} in {file_name}. Skipping record.")
                             failed_validations += 1
                             continue # Skip to next line
 
@@ -56,7 +47,7 @@ class RecordValidator:
                         processed_record = ProcessedRecord(
                             res_record=record_dict.get('res_record', ''),
                             text_record=record_dict.get('text_record', ''),
-                            masks=masks_list_of_objects
+                            mask_info=masks_list_of_objects
                         )
 
                         # Validate the record using the imported validate_mapping function
@@ -64,10 +55,10 @@ class RecordValidator:
                             failed_validations += 1
                             print(f"Validation Failed in {file_name}, Record #{line_num}")
                             # Optional: Print more details about the failed record
-                            # print(f"  Original Text: {processed_record.text_record}")
-                            # print(f"  Masked Text: {processed_record.res_record}")
-                            # print(f"  Masks: {processed_record.masks}")
-                            # print("-" * 20) # Separator
+                            print(f"  Original Text: {processed_record.text_record}")
+                            print(f"  Masked Text: {processed_record.res_record}")
+                            print(f"  Masks: {processed_record.mask_info}")
+                            print("-" * 20) # Separator
 
                     except json.JSONDecodeError:
                         failed_validations += 1

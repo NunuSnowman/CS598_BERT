@@ -172,7 +172,7 @@ def save_processed_data(output_dir: str, text_records: list[str], partially_reid
                     "res_record": res_records[i],
                     "text_record": text_records[i],
                     # Convert list of MaskResult objects to a list of dictionaries
-                    "mask_result": [dataclasses.asdict(mr) for mr in mask_results_list[i]]
+                    "mask_info": [dataclasses.asdict(mr) for mr in mask_results_list[i]]
                 }
                 # Write each record as a JSON object on a new line
                 f.write(json.dumps(record_data, ensure_ascii=False) + '\n')

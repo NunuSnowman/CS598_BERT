@@ -120,7 +120,7 @@ def pseudo_de_identify_docred_single_file(data_file, output_file):
         record_json = {
             "res_record": masked_item_text,
             "text_record": original_item_text,
-            "masks": masks
+            "mask_info": masks
         }
         processed_records.append(record_json)
 

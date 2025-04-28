@@ -82,7 +82,7 @@ class RecordValidator:
 if __name__ == "__main__":
     # Define the path to the folder containing your JSONL files
     # You will need to change this path to where your processed_data.jsonl file(s) are located
-    data_folder_to_validate = "data/physionet_nurse" # Example path
 
     validator = RecordValidator()
-    validator.run_validation(data_folder_to_validate)
+    validator.run_validation("data/physionet_nurse")
+    validator.run_validation("data/DocREDv2")

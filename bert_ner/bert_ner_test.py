@@ -2,6 +2,16 @@ from bert_ner.bert_common import *
 from bert_ner.bert_ner_train import process_data
 import torch
 
+
+def simplify_label(label_id):
+    original_label = id_to_label[label_id]
+    if original_label == 'O':
+        return 'O'
+    else:
+        # Remove B- and I- prefixes
+        return original_label[2:]
+
+
 def evaluate_model(data: LabeledData, tokenizer, model):
     device = torch.device("cpu")
 
@@ -48,7 +58,6 @@ def evaluate_model(data: LabeledData, tokenizer, model):
     # --- Print Predicted Entities with Original Text (Sentence by Sentence) ---
     print("\n--- Predicted Entities ---")
 
-    # Process sentence by sentence to correctly align predictions with original text and offsets
     token_index_in_flattened_list = 0 # To keep track of our position in the flattened prediction lists
     for sentence_index, (original_text, _) in enumerate(data):
         encoded_inputs = tokenizer(
@@ -61,51 +70,68 @@ def evaluate_model(data: LabeledData, tokenizer, model):
         )
         offset_mapping = encoded_inputs['offset_mapping'][0]
         attention_mask = encoded_inputs['attention_mask'][0]
-        input_ids = encoded_inputs['input_ids'][0] # Get input_ids for this sentence
+        input_ids = encoded_inputs['input_ids'][0]
 
+        current_entity_text = ""
+        current_entity_label = None
+        entity_start_char = -1
         # Iterate through the tokens of the current sentence
         for token_idx in range(len(attention_mask)):
             # Only consider real tokens (not padding or special tokens indicated by attention_mask)
             if attention_mask[token_idx] == 1:
-                # Get the predicted label for this specific token from the flattened list
+                # Get the predicted label for this specific token
                 predicted_label_id = all_predicted_labels[token_index_in_flattened_list]
-                predicted_label = id_to_label[predicted_label_id]
+                simplified_predicted_label = simplify_label(predicted_label_id)
 
                 # Get the original token ID to check for special tokens
                 original_token_id = input_ids[token_idx].item()
                 special_token_ids = set([tokenizer.cls_token_id, tokenizer.sep_token_id, tokenizer.pad_token_id])
 
-                # If the predicted label is not 'O' and it's not a special token, extract and print
-                if predicted_label != 'O' and original_token_id not in special_token_ids:
-                    char_start, char_end = offset_mapping[token_idx].tolist()
+                # Get character offsets for the current token
+                char_start, char_end = offset_mapping[token_idx].tolist()
 
-                    # Ensure offsets are valid before slicing
-                    if char_start is not None and char_end is not None and char_end > char_start:
-                        original_string = original_text[char_start:char_end]
+                if simplified_predicted_label != 'O' and original_token_id not in special_token_ids:
+                    # This token is part of a named entity
+                    if current_entity_label is None:
+                        # Start of a new entity
+                        current_entity_text = original_text[char_start:char_end]
+                        current_entity_label = simplified_predicted_label
+                        entity_start_char = char_start
+                    elif simplified_predicted_label == current_entity_label:
+                        # Continuation of the current entity
+                        # Append the text, considering potential spaces in the original text
+                        # Find the gap between the end of the last token and the start of the current token
+                        previous_token_end_char = offset_mapping[token_idx - 1].tolist()[1] if token_idx > 0 and offset_mapping[token_idx - 1].tolist()[1] is not None else char_start
+                        gap_text = original_text[previous_token_end_char:char_start] if previous_token_end_char < char_start else ""
+                        current_entity_text += gap_text + original_text[char_start:char_end]
 
-                        # Simplify the predicted label (remove B- or I-)
-                        simplified_predicted_label = predicted_label[2:] if predicted_label.startswith(('B-', 'I-')) else predicted_label
-
-                        print(f"  Text: '{original_string}', Label: {simplified_predicted_label}")
+                    else:
+                        # End of previous entity, start of a new one with a different label
+                        print(f"  Entity: '{current_entity_text}', Label: {current_entity_label}")
+                        current_entity_text = original_text[char_start:char_end]
+                        current_entity_label = simplified_predicted_label
+                        entity_start_char = char_start
+                else:
+                    # This token is 'O' or a special token, which ends any ongoing entity
+                    if current_entity_label is not None:
+                        # End of an entity
+                        print(f"  Entity: '{current_entity_text}', Label: {current_entity_label}")
+                        current_entity_text = ""
+                        current_entity_label = None
+                        entity_start_char = -1
 
                 # Move to the next token in the flattened list
                 token_index_in_flattened_list += 1
 
+        # End of sentence: check if there's an ongoing entity to print
+        if current_entity_label is not None:
+            print(f"  Entity: '{current_entity_text}', Label: {current_entity_label}")
 
     try:
         from sklearn.metrics import classification_report
 
-        # Simplified label processing logic for classification report (from previous turn)
-        def simplify_label_for_report(label_id):
-            original_label = id_to_label[label_id]
-            if original_label == 'O':
-                return 'O' # Keep 'O' for the report if needed, or filter later
-            else:
-                # Remove B- and I- prefixes
-                return original_label[2:]
-
-        simplified_true_labels_report = [simplify_label_for_report(label) for label in all_true_labels if id_to_label[label] != 'O']
-        simplified_predicted_labels_report = [simplify_label_for_report(label) for label in all_predicted_labels if id_to_label[label] != 'O']
+        simplified_true_labels_report = [simplify_label(label) for label in all_true_labels if id_to_label[label] != 'O']
+        simplified_predicted_labels_report = [simplify_label(label) for label in all_predicted_labels if id_to_label[label] != 'O']
 
         report_target_names = sorted(list(set(simplified_true_labels_report + simplified_predicted_labels_report)))
 

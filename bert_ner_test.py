@@ -131,8 +131,8 @@ def evaluate_model(data: [ProcessedRecord], tokenizer, model):
     try:
         from sklearn.metrics import classification_report
 
-        simplified_true_labels_report = [simplify_label(label) for label in all_true_labels if id_to_label[label] != 'O']
-        simplified_predicted_labels_report = [simplify_label(label) for label in all_predicted_labels if id_to_label[label] != 'O']
+        simplified_true_labels_report = [simplify_label(label) for label in all_true_labels]
+        simplified_predicted_labels_report = [simplify_label(label) for label in all_predicted_labels]
 
         report_target_names = sorted(list(set(simplified_true_labels_report + simplified_predicted_labels_report)))
 

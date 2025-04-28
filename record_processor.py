@@ -13,7 +13,7 @@ class RecordProcessor:
     def __init__(self, res_record: str, text_record: str):
         self.res_record = res_record
         self.text_record = text_record
-        self.masks: list[MaskInfo] = self._map_record()
+        self.masks: list[MaskInfo] = self._process_raw_record()
         self._parsed_segments = None # Stores the parsed segments of res_record
 
     def _parse_res_segments(self):
@@ -165,7 +165,7 @@ class RecordProcessor:
                     current_char_pos_in_segment = sum(len(w) + 1 for w in words[:word_idx])
 
 
-    def _map_record(self) -> list[MaskInfo]:
+    def _process_raw_record(self) -> list[MaskInfo]:
         """
         Executes the record parsing and alignment process, generating detailed results.
 

@@ -18,7 +18,7 @@ NUM_EPOCHS = 50   # Train for more epochs
 LEARNING_RATE = 2e-5
 SAVE_DIRECTORY = "./tmp/saved_models"
 
-label_map = {'O': 0, 'B-NAME': 1, 'I-NAME': 2,
+label_map = {'B-NAME': 1, 'I-NAME': 2,
              'B-LOCATION': 3, 'I-LOCATION': 4,
              'B-DATE': 5, 'I-DATE': 6}
 id_to_label = {v: k for k, v in label_map.items()} # Create reverse mapping

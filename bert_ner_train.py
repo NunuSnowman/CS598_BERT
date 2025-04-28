@@ -1,7 +1,6 @@
 from bert_common import *
 
-
-def train(data: [ProcessedRecord], tokenizer, model, save_directory=SAVE_DIRECTORY):
+def train_model(data: [ProcessedRecord], tokenizer, model, save_directory=SAVE_DIRECTORY):
     print("Processing training data...")
     train_processed = process_data_label(data, tokenizer, MAX_LENGTH)
 
@@ -65,5 +64,5 @@ def train(data: [ProcessedRecord], tokenizer, model, save_directory=SAVE_DIRECTO
 if __name__ == "__main__":
     tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)
     model = BertForTokenClassification.from_pretrained(MODEL_NAME, num_labels=num_labels)
-    train(test_data, tokenizer, model, save_directory=SAVE_DIRECTORY)
+    train_model(test_data, tokenizer, model, save_directory=SAVE_DIRECTORY)
 

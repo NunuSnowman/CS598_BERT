@@ -10,14 +10,11 @@ from typing import List, Tuple, Dict
 from record_file_reader import read_json_list_as_processed_records
 from record_label_maper import simplify_label_string, simplify_record_labels  # Import the label simplification function
 from bert_common import MODEL_NAME, SAVE_DIRECTORY, MAX_LENGTH, BATCH_SIZE, NUM_EPOCHS, LEARNING_RATE, ProcessedRecord, \
-    MaskInfo  # Import necessary components
+    MaskInfo, num_labels  # Import necessary components
 from bert_ner_train import train_model
 from bert_ner_test import evaluate_model
 
 # Create a new label map based on the simplified labels
-simplified_label_map = {'O': 0, 'NAME': 1, 'LOCATION': 2, 'DATE': 3}
-simplified_id_to_label = {v: k for k, v in simplified_label_map.items()}
-simplified_num_labels = len(simplified_label_map)
 
 
 # --- Reusable Methods ---
@@ -36,9 +33,9 @@ def load_and_split_data(jsonl_path: str, test_size: float = 0.2, random_state: i
 def initialize_model_and_tokenizer() -> Tuple[BertTokenizerFast, BertForTokenClassification]:
     print(f"\nInitializing tokenizer: {MODEL_NAME}")
     tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)
-    print(f"Initializing model: {MODEL_NAME} with {simplified_num_labels} labels.")
+    print(f"Initializing model: {MODEL_NAME} with {num_labels} labels.")
     # Use the simplified_num_labels for the model
-    model = BertForTokenClassification.from_pretrained(MODEL_NAME, num_labels=simplified_num_labels)
+    model = BertForTokenClassification.from_pretrained(MODEL_NAME, num_labels=num_labels)
     return tokenizer, model
 
 

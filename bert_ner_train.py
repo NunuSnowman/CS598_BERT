@@ -1,4 +1,5 @@
 from bert_common import *
+from transformers import get_linear_schedule_with_warmup
 
 def train_model(data: [ProcessedRecord], tokenizer, model, save_directory=SAVE_DIRECTORY):
     print("Processing training data...")
@@ -18,6 +19,12 @@ def train_model(data: [ProcessedRecord], tokenizer, model, save_directory=SAVE_D
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     model.to(device)
 
+    total_steps = len(train_dataloader) * NUM_EPOCHS
+    scheduler = get_linear_schedule_with_warmup(
+        optimizer,
+        num_warmup_steps=int(0.1 * total_steps), # 10% warmup
+        num_training_steps=total_steps
+    )
     # --- Training Loop ---
     print(f"\nTraining on device: {device}")
     model.train() # Set the model to training mode
@@ -43,12 +50,12 @@ def train_model(data: [ProcessedRecord], tokenizer, model, save_directory=SAVE_D
             # Perform a backward pass to calculate gradients
             loss.backward()
 
-            # Update model parameters
             optimizer.step()
+
+            scheduler.step()
 
             total_loss += loss.item()
 
-            # Print loss periodically
             if (step + 1) % 10 == 0 or step == 0: # Print first step and every 10 steps
                 print(f"  Epoch {epoch+1}, Step {step+1}, Loss: {loss.item():.4f}")
 
@@ -64,5 +71,5 @@ def train_model(data: [ProcessedRecord], tokenizer, model, save_directory=SAVE_D
 if __name__ == "__main__":
     tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)
     model = BertForTokenClassification.from_pretrained(MODEL_NAME, num_labels=num_labels)
-    train_model(test_data, tokenizer, model, save_directory=SAVE_DIRECTORY)
+    train_model(test_data, tokenizer, model, save_directory="tmp/saved_test_model")
 

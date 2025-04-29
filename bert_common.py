@@ -13,7 +13,7 @@ from common import ProcessedRecord, MaskInfo # Assuming common.py contains these
 # --- Configuration ---
 MODEL_NAME = 'bert-base-uncased'
 MAX_LENGTH = 128 # Max sequence length for tokenization and padding
-BATCH_SIZE = 32   # Increased batch size for efficiency
+BATCH_SIZE = 8   # Increased batch size for efficiency
 NUM_EPOCHS = 50   # Train for more epochs
 LEARNING_RATE = 1e-4
 SAVE_DIRECTORY = "./tmp/saved_models"

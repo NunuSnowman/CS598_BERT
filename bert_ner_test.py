@@ -149,5 +149,5 @@ def evaluate_model(data: [ProcessedRecord], tokenizer, model):
 
 if __name__ == "__main__":
     tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)
-    model = BertForTokenClassification.from_pretrained(SAVE_DIRECTORY, num_labels=num_labels)
+    model = BertForTokenClassification.from_pretrained("tmp/saved_test_model", num_labels=num_labels)
     evaluate_model(test_data, tokenizer, model)

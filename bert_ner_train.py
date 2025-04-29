@@ -6,7 +6,7 @@ from typing import List, Tuple, Optional, Callable
 
 # Assuming these imports are available from bert_common.py
 from bert_common import ProcessedRecord, MaskInfo, MODEL_NAME, MAX_LENGTH, TOKEN_OVERLAP, BATCH_SIZE, NUM_EPOCHS, \
-    LEARNING_RATE, SAVE_DIRECTORY, label_map, id_to_label, num_labels, create_processed_record, train_data, test_data, \
+    LEARNING_RATE, SAVE_DIRECTORY, label_map, id_to_label, num_labels, create_processed_record, \
     process_data_label
 
 # Import the evaluation function from bert_ner_test.py
@@ -85,8 +85,4 @@ def train_model(
     model.save_pretrained(save_directory)
     print("Model saved.")
 
-if __name__ == "__main__":
-    tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)
-    model = BertForTokenClassification.from_pretrained(MODEL_NAME, num_labels=num_labels)
-    train_model(train_data, tokenizer, model, save_directory="tmp/saved_test_model")
 

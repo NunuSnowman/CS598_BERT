@@ -147,8 +147,3 @@ def evaluate_model(data: [ProcessedRecord],
         print("\nScikit-learn not found. Install it (`pip install scikit-learn`) to see evaluation metrics.")
         print("Skipping detailed classification report.")
 
-
-if __name__ == "__main__":
-    tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)
-    model = BertForTokenClassification.from_pretrained("tmp/saved_test_model", num_labels=num_labels)
-    evaluate_model(test_data, tokenizer, model)

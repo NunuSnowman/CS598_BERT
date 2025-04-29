@@ -71,5 +71,5 @@ def train_model(data: [ProcessedRecord], tokenizer, model, save_directory=SAVE_D
 if __name__ == "__main__":
     tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)
     model = BertForTokenClassification.from_pretrained(MODEL_NAME, num_labels=num_labels)
-    train_model(test_data, tokenizer, model, save_directory="tmp/saved_test_model")
+    train_model(train_data, tokenizer, model, save_directory="tmp/saved_test_model")
 

@@ -69,8 +69,8 @@ if __name__ == "__main__":
 
     tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)
     for epoch in range(SAVE_MODEL_EVERY_N_EPOCH, NUM_EPOCHS + 1, SAVE_MODEL_EVERY_N_EPOCH):
+        checkpoint_path = f"tmp/saved_test_model_epoch_{epoch}"
         if os.path.exists(checkpoint_path):
-            checkpoint_path = f"tmp/saved_test_model_epoch_{epoch}"
             print(f"\nLoading and evaluating model from {checkpoint_path}")
             eval_model = BertForTokenClassification.from_pretrained(checkpoint_path, num_labels=num_labels)
             evaluate_model(test_data, tokenizer, eval_model)

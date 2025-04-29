@@ -1,5 +1,4 @@
 from bert_common import *
-from bert_ner_train import process_data_label
 import torch
 
 
@@ -12,7 +11,9 @@ def simplify_label(label_id):
         return original_label[2:]
 
 
-def evaluate_model(data: [ProcessedRecord], tokenizer, model):
+def evaluate_model(data: [ProcessedRecord],
+                   tokenizer: BertTokenizerFast,
+                   model: BertForTokenClassification,):
     device = torch.device("cpu")
 
     print("\n--- Testing (Evaluation) ---")

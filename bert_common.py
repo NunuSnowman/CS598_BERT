@@ -1,5 +1,3 @@
-
-
 from dataclasses import dataclass
 
 from transformers import BertTokenizer, BertForTokenClassification, BertTokenizerFast
@@ -13,6 +11,7 @@ from common import ProcessedRecord, MaskInfo # Assuming common.py contains these
 # --- Configuration ---
 MODEL_NAME = 'bert-base-uncased'
 MAX_LENGTH = 128 # Max sequence length for tokenization and padding
+TOKEN_OVERLAP = 64
 BATCH_SIZE = 8   # Increased batch size for efficiency
 NUM_EPOCHS = 50   # Train for more epochs
 LEARNING_RATE = 1e-4
@@ -103,117 +102,142 @@ test_data: List[ProcessedRecord] = [
 
 def process_data_label(data: List[ProcessedRecord], tokenizer: BertTokenizerFast, max_length: int):
     """
-    Tokenizes texts from ProcessedRecord and aligns labels with tokens using the B-I-O scheme.
+    Tokenizes texts from ProcessedRecord and aligns labels with tokens using the B-I-O scheme,
+    handling texts longer than max_length by splitting them into overlapping segments based on tokens.
 
     Args:
         data (List[ProcessedRecord]): List of ProcessedRecord objects.
         tokenizer (BertTokenizerFast): The BERT tokenizer.
-        max_length (int): Maximum sequence length for padding and truncation.
+        max_length (int): Maximum sequence length for tokenization and padding.
 
     Returns:
         dict: Contains padded input_ids, attention_masks, and labels tensors.
     """
-    input_ids = []
-    attention_masks = []
-    labels = []
+    input_ids_list = []
+    attention_masks_list = []
+    labels_list = []
 
-    # Access the globally defined label_map
     global label_map
+    overlap_tokens = TOKEN_OVERLAP
 
     for record in data:
         text = record.text_record
         mask_info = record.mask_info # This is a list of MaskInfo objects
 
-        # Tokenize the text
-        encoded_inputs = tokenizer(
+        # Tokenize the entire text first
+        encoded_inputs_full = tokenizer(
             text,
-            padding="max_length", # Pad to max_length
-            truncation=True,      # Truncate to max_length
-            max_length=max_length,
-            return_tensors="pt",  # Return PyTorch tensors
-            return_offsets_mapping=True # Get character offsets for token-label alignment
+            # Do not pad or truncate here, we'll handle splitting manually
+            padding="do_not_pad",
+            truncation=False,
+            return_tensors="pt",
+            return_offsets_mapping=True, # Get character offsets for token-label alignment
+            add_special_tokens=False # Do not add special tokens yet
         )
 
-        # Get the character offsets for each token in the sequence
-        offset_mapping = encoded_inputs['offset_mapping'][0].tolist()
+        full_input_ids = encoded_inputs_full['input_ids'][0].tolist()
+        full_offset_mapping = encoded_inputs_full['offset_mapping'][0].tolist()
+        full_attention_mask = encoded_inputs_full['attention_mask'][0].tolist() # Get full attention mask
 
-        # Initialize token-level labels for this sequence with 'O' (label 0)
-        sequence_labels = [label_map['O']] * max_length # Initialize with 'O' up to max_length
+        full_sequence_labels = [label_map['O']] * len(full_input_ids)
 
-        # Iterate through each defined mask_info in the current record
         for mask in mask_info:
             char_start = mask.start
             char_end = mask.end
             entity_type = mask.label
-            # Keep track if we've found the first token of this entity
             is_first_token_of_entity = True
 
-            # Iterate through tokens to find which ones correspond to the current entity span
-            for token_idx in range(len(encoded_inputs['input_ids'][0])):
-                token_char_start, token_char_end = offset_mapping[token_idx]
+            for token_idx in range(len(full_input_ids)):
+                token_char_start, token_char_end = full_offset_mapping[token_idx]
 
-                # Skip special tokens ([CLS], [SEP], [PAD]) and their (0,0) offsets
-                # Check token ID to be sure it's a special token
-                # A more robust check for special tokens often involves looking at the token ID
-                special_token_ids = set([tokenizer.cls_token_id, tokenizer.sep_token_id, tokenizer.pad_token_id])
-                if encoded_inputs['input_ids'][0][token_idx].item() in special_token_ids:
-                    # If it's a special token, its label should always be O (or ignored in loss)
-                    # Our initialization already sets it to O, so we just continue
-                    continue
-
-                # Check if the token's character span overlaps with the entity's character span
-                # A common and effective check: Does the token's start character fall within the entity span?
-                # This correctly handles subwords at the beginning of an entity.
-                # We also need to handle cases where the token's end character is within the entity span,
-                # or where the entity spans across the token. A simplified check is below:
-                # If the token starts within the entity OR the entity starts within the token
+                # Check for overlap between token's character span and the entity's character span
                 token_starts_within_entity = token_char_start >= char_start and token_char_start < char_end
                 entity_starts_within_token = char_start >= token_char_start and char_start < token_char_end
 
                 if token_starts_within_entity or entity_starts_within_token:
-                    # This token is part of the current entity
                     if is_first_token_of_entity:
-                        # This is the first token corresponding to this entity span, assign B- label
-                        # Ensure the label exists in the label_map (e.g., "B-" + "NAME")
                         b_label = 'B-' + entity_type
                         if b_label in label_map:
-                            sequence_labels[token_idx] = label_map[b_label]
-                            is_first_token_of_entity = False # Subsequent tokens for this entity get I-
+                            full_sequence_labels[token_idx] = label_map[b_label]
+                            is_first_token_of_entity = False
                         else:
-                            # Handle cases where the B- label is not in the map, maybe default to 'O'
-                            sequence_labels[token_idx] = label_map['O']
-                            is_first_token_of_entity = False # Prevent I- if B- wasn't found
-                            # Optional: Add a warning or log here if a label is unexpected
+                            full_sequence_labels[token_idx] = label_map['O']
+                            is_first_token_of_entity = False
                             print(f"Warning: Label '{b_label}' not found in label_map for entity type '{entity_type}'. Assigning 'O'.")
-
                     else:
-                        # This token is part of an entity that has already started, assign I- label
-                        # Ensure the label exists in the label_map (e.g., "I-" + "NAME")
                         i_label = 'I-' + entity_type
                         if i_label in label_map:
-                            sequence_labels[token_idx] = label_map[i_label]
+                            full_sequence_labels[token_idx] = label_map[i_label]
                         else:
-                            # Handle cases where the I- label is not in the map, maybe default to 'O'
-                            sequence_labels[token_idx] = label_map['O']
-                            # Optional: Add a warning or log here if a label is unexpected
+                            full_sequence_labels[token_idx] = label_map['O']
                             print(f"Warning: Label '{i_label}' not found in label_map for entity type '{entity_type}'. Assigning 'O'.")
 
-                # Note: The offset mapping can be tricky with BERT's subword tokenization.
-                # The logic above is a common approximation. For highly precise alignment,
-                # more complex logic might be needed, potentially considering token_char_end.
+
+        # Split into overlapping segments based on tokens
+        token_segments = []
+        label_segments = []
+        attention_mask_segments = []
 
 
-        # Convert the list of label integers to a PyTorch tensor
-        sequence_labels_tensor = torch.tensor(sequence_labels, dtype=torch.long)
+        start_token = 0
+        while start_token < len(full_input_ids):
+            end_token = start_token + max_length
 
-        # Append the processed inputs and labels to the lists
-        input_ids.append(encoded_inputs['input_ids'][0])
-        attention_masks.append(encoded_inputs['attention_mask'][0])
-        labels.append(sequence_labels_tensor)
+            # Ensure the segment does not exceed the full text token length
+            current_segment_input_ids = full_input_ids[start_token:end_token]
+            current_segment_labels = full_sequence_labels[start_token:end_token]
+            current_segment_attention_mask = full_attention_mask[start_token:end_token]
 
-    # Stack the lists of tensors into single tensors for the dataset
+            # Add special tokens ([CLS] and [SEP]) and pad to max_length
+            # The tokenizer handles adding special tokens and padding correctly when called on a list of ids
+            # However, for label alignment, we need to manage this manually or adjust after tokenization.
+            # A simpler approach here is to pad the segments and labels manually.
+
+            # Pad the segment and labels
+            padding_length = max_length - len(current_segment_input_ids)
+            padded_input_ids = current_segment_input_ids + [tokenizer.pad_token_id] * padding_length
+            padded_labels = current_segment_labels + [label_map['O']] * padding_length # Pad with O labels
+            padded_attention_mask = current_segment_attention_mask + [0] * padding_length # Pad attention mask with 0
+
+            # Prepend CLS and append SEP
+            # Note: This simplifies the token indices for labels.
+            # A more robust approach would involve aligning labels with the tokenizer's output.
+            # For minimal changes, we'll add special tokens manually and adjust labels.
+            padded_input_ids = [tokenizer.cls_token_id] + padded_input_ids[:-1] # Replace the last padding token with SEP
+            padded_labels = [label_map['O']] + padded_labels[:-1] # CLS label is O
+            padded_attention_mask = [1] + padded_attention_mask[:-1] # CLS attention is 1
+
+            padded_input_ids[-1] = tokenizer.sep_token_id # Set the last token to SEP
+            padded_labels[-1] = label_map['O'] # SEP label is O
+            padded_attention_mask[-1] = 1 # SEP attention is 1
+
+
+            token_segments.append(padded_input_ids)
+            label_segments.append(padded_labels)
+            attention_mask_segments.append(padded_attention_mask)
+
+
+            # Move start_token for the next segment, considering overlap
+            if end_token >= len(full_input_ids):
+                break # Reached the end of the full text
+            start_token += max_length - overlap_tokens
+
+
+        # Append all segments for this record to the main lists
+        input_ids_list.extend(token_segments)
+        labels_list.extend(label_segments)
+        attention_masks_list.extend(attention_mask_segments)
+
+
+    # Convert lists of lists to PyTorch tensors
+    # Ensure all segments have the same length (max_length) before stacking
+    input_ids_list = [torch.tensor(ids, dtype=torch.long) for ids in input_ids_list]
+    attention_masks_list = [torch.tensor(mask, dtype=torch.long) for mask in attention_masks_list]
+    labels_list = [torch.tensor(lbls, dtype=torch.long) for lbls in labels_list]
+
+
     return {
-        'input_ids': torch.stack(input_ids),
-        'attention_masks': torch.stack(attention_masks),
-        'labels': torch.stack(labels)
+        'input_ids': torch.stack(input_ids_list),
+        'attention_masks': torch.stack(attention_masks_list),
+        'labels': torch.stack(labels_list)
     }

@@ -110,14 +110,16 @@ def process_data_label(data: List[ProcessedRecord], tokenizer: BertTokenizerFast
                         else:
                             full_sequence_labels[token_idx] = label_map['O']
                             is_first_token_of_entity = False
-                            print(f"Warning: Label '{b_label}' not found in label_map for entity type '{entity_type}'. Assigning 'O'.")
+                            if b_label != 'B-O':
+                                print(f"Warning: Label '{b_label}' not found in label_map for entity type '{entity_type}'. Assigning 'O'.")
                     else:
                         i_label = 'I-' + entity_type
                         if i_label in label_map:
                             full_sequence_labels[token_idx] = label_map[i_label]
                         else:
                             full_sequence_labels[token_idx] = label_map['O']
-                            print(f"Warning: Label '{i_label}' not found in label_map for entity type '{entity_type}'. Assigning 'O'.")
+                            if i_label != 'I-O':
+                                print(f"Warning: Label '{i_label}' not found in label_map for entity type '{entity_type}'. Assigning 'O'.")
 
 
         # Split into overlapping segments based on tokens

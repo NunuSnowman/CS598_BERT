@@ -7,11 +7,7 @@ from typing import List, Tuple, Optional, Callable
 # Assuming these imports are available from bert_common.py
 from bert_common import ProcessedRecord, MaskInfo, MODEL_NAME, MAX_LENGTH, TOKEN_OVERLAP, BATCH_SIZE, NUM_EPOCHS, \
     LEARNING_RATE, SAVE_DIRECTORY, label_map, id_to_label, num_labels, create_processed_record, \
-    process_data_label
-
-# Import the evaluation function from bert_ner_test.py
-from bert_ner_test import evaluate_model  # Assuming evaluate_model is in bert_ner_test.py
-
+    process_data_label, SAVE_MODEL_EVERY_N_EPOCH
 
 def train_model(
         data: [ProcessedRecord],
@@ -79,8 +75,13 @@ def train_model(
 
         avg_loss = total_loss / len(train_dataloader)
         print(f"Epoch {epoch + 1} Complete, Average Loss: {avg_loss:.4f}")
+        if SAVE_MODEL_EVERY_N_EPOCH != 0 and (epoch + 1) % SAVE_MODEL_EVERY_N_EPOCH == 0 and epoch+1 != NUM_EPOCHS :
+            epoch_save_directory = f"{save_directory}_epoch_{epoch + 1}"
+            os.makedirs(epoch_save_directory, exist_ok=True)
+            model.save_pretrained(epoch_save_directory)
+            print(f"Model checkpoint saved to {epoch_save_directory}")
+
     print(f"\nSaving model to {save_directory}...")
-    import os
     os.makedirs(save_directory, exist_ok=True)
     model.save_pretrained(save_directory)
     print("Model saved.")

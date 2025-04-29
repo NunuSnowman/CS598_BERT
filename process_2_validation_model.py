@@ -2,11 +2,11 @@ from typing import List
 
 from transformers import BertTokenizerFast, BertForTokenClassification
 
-from bert_common import MODEL_NAME, num_labels, create_processed_record
+from bert_common import MODEL_NAME, num_labels, create_processed_record, SAVE_MODEL_EVERY_N_EPOCH, NUM_EPOCHS
 from bert_ner_test import evaluate_model
 from bert_ner_train import train_model
 from common import ProcessedRecord
-
+import os
 # --- Example Usage of the Helper ---
 
 # Creating the train_data using the helper
@@ -64,8 +64,18 @@ test_data: List[ProcessedRecord] = [
 if __name__ == "__main__":
     tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)
     model = BertForTokenClassification.from_pretrained(MODEL_NAME, num_labels=num_labels)
-    train_model(train_data, tokenizer, model, save_directory="tmp/saved_test_model")
+    model_path_prefix = "tmp/saved_test_model"
+    train_model(train_data, tokenizer, model, save_directory=model_path_prefix)
 
     tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)
+    for epoch in range(SAVE_MODEL_EVERY_N_EPOCH, NUM_EPOCHS + 1, SAVE_MODEL_EVERY_N_EPOCH):
+        if os.path.exists(checkpoint_path):
+            checkpoint_path = f"tmp/saved_test_model_epoch_{epoch}"
+            print(f"\nLoading and evaluating model from {checkpoint_path}")
+            eval_model = BertForTokenClassification.from_pretrained(checkpoint_path, num_labels=num_labels)
+            evaluate_model(test_data, tokenizer, eval_model)
+
+
+    print(f"\nLoading and evaluating model from {model_path_prefix}")
     model = BertForTokenClassification.from_pretrained("tmp/saved_test_model", num_labels=num_labels)
     evaluate_model(test_data, tokenizer, model)

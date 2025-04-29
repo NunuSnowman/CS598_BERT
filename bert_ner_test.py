@@ -109,7 +109,7 @@ def evaluate_model(data: [ProcessedRecord],
 
                     else:
                         # End of previous entity, start of a new one with a different label
-                        print(f"  Entity: '{current_entity_text}', Label: {current_entity_label}")
+                        # print(f"  Entity: '{current_entity_text}', Label: {current_entity_label}")
                         current_entity_text = original_text[char_start:char_end]
                         current_entity_label = simplified_predicted_label
                         entity_start_char = char_start
@@ -117,7 +117,7 @@ def evaluate_model(data: [ProcessedRecord],
                     # This token is 'O' or a special token, which ends any ongoing entity
                     if current_entity_label is not None:
                         # End of an entity
-                        print(f"  Entity: '{current_entity_text}', Label: {current_entity_label}")
+                        # print(f"  Entity: '{current_entity_text}', Label: {current_entity_label}")
                         current_entity_text = ""
                         current_entity_label = None
                         entity_start_char = -1

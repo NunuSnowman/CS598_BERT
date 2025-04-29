@@ -16,6 +16,7 @@ BATCH_SIZE = 8   # Increased batch size for efficiency
 NUM_EPOCHS = 50   # Train for more epochs
 LEARNING_RATE = 1e-4
 SAVE_DIRECTORY = "./tmp/saved_models"
+SAVE_MODEL_EVERY_N_EPOCH = 10
 
 label_map = {'O': 0, 'B-NAME': 1, 'I-NAME': 2,
              'B-LOCATION': 3, 'I-LOCATION': 4,

@@ -92,9 +92,9 @@ def run():
 
 
 if __name__ == "__main__":
-    bert_common.BERT_PRINT_DEBUG_LOG = True
+    bert_common.bert_print_debug_log = True
     bert_common.SAVE_MODEL_EVERY_N_EPOCH = 0
     set_classify_type(use_multi_class=True)
-    # run()
+    run()
     set_classify_type(use_multi_class=False)
     run()

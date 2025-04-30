@@ -148,7 +148,7 @@ def evaluate_model(data: [ProcessedRecord],
         print("\nScikit-learn not found. Install it (`pip install scikit-learn`) to see evaluation metrics.")
         print("Skipping detailed classification report.")
 
-    if bert_common.BERT_PRINT_DEBUG_LOG:
+    if bert_common.bert_print_debug_log:
         for i in range(len(all_input_ids)):
             token_id = all_input_ids[i]
             true_label = evaluation_label(all_true_labels[i])

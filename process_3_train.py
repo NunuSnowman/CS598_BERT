@@ -19,7 +19,7 @@ from bert_ner_test import evaluate_model
 
 # --- Reusable Methods ---
 
-def load_and_split_data(jsonl_path: str, test_size: float = 0.2, random_state: int = 42) -> Tuple[
+def load_and_split_data(jsonl_path: str, test_size: float = 0.5, random_state: int = 42) -> Tuple[
     List[ProcessedRecord], List[ProcessedRecord]]:
     print(f"Reading data from {jsonl_path}...")
     all_records: list[ProcessedRecord] = read_json_list_as_processed_records(jsonl_path)

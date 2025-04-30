@@ -138,10 +138,6 @@ def process_data_label(data: List[ProcessedRecord], tokenizer: BertTokenizerFast
             current_segment_labels = full_sequence_labels[start_token:end_token]
             current_segment_attention_mask = full_attention_mask[start_token:end_token]
 
-            # Add special tokens ([CLS] and [SEP]) and pad to max_length
-            # The tokenizer handles adding special tokens and padding correctly when called on a list of ids
-            # However, for label alignment, we need to manage this manually or adjust after tokenization.
-            # A simpler approach here is to pad the segments and labels manually.
 
             # Pad the segment and labels
             padding_length = max_length - len(current_segment_input_ids)
@@ -149,10 +145,6 @@ def process_data_label(data: List[ProcessedRecord], tokenizer: BertTokenizerFast
             padded_labels = current_segment_labels + [label_map['O']] * padding_length # Pad with O labels
             padded_attention_mask = current_segment_attention_mask + [0] * padding_length # Pad attention mask with 0
 
-            # Prepend CLS and append SEP
-            # Note: This simplifies the token indices for labels.
-            # A more robust approach would involve aligning labels with the tokenizer's output.
-            # For minimal changes, we'll add special tokens manually and adjust labels.
             padded_input_ids = [tokenizer.cls_token_id] + padded_input_ids[:-1] # Replace the last padding token with SEP
             padded_labels = [label_map['O']] + padded_labels[:-1] # CLS label is O
             padded_attention_mask = [1] + padded_attention_mask[:-1] # CLS attention is 1

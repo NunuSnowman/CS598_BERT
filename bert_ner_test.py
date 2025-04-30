@@ -2,7 +2,7 @@ from bert_common import *
 import torch
 
 
-def simplify_label(label_id):
+def evaluation_label(label_id):
     original_label = id_to_label[label_id]
     if original_label == 'O':
         return 'O'
@@ -83,7 +83,7 @@ def evaluate_model(data: [ProcessedRecord],
             if attention_mask[token_idx] == 1:
                 # Get the predicted label for this specific token
                 predicted_label_id = all_predicted_labels[token_index_in_flattened_list]
-                simplified_predicted_label = simplify_label(predicted_label_id)
+                simplified_predicted_label = evaluation_label(predicted_label_id)
 
                 # Get the original token ID to check for special tokens
                 original_token_id = input_ids[token_idx].item()
@@ -132,8 +132,8 @@ def evaluate_model(data: [ProcessedRecord],
     try:
         from sklearn.metrics import classification_report
 
-        simplified_true_labels_report = [simplify_label(label) for label in all_true_labels]
-        simplified_predicted_labels_report = [simplify_label(label) for label in all_predicted_labels]
+        simplified_true_labels_report = [evaluation_label(label) for label in all_true_labels]
+        simplified_predicted_labels_report = [evaluation_label(label) for label in all_predicted_labels]
 
         report_target_names = sorted(list(set(simplified_true_labels_report + simplified_predicted_labels_report)))
 
@@ -150,18 +150,17 @@ def evaluate_model(data: [ProcessedRecord],
     if BERT_PRINT_DEBUG_LOG:
         for i in range(len(all_input_ids)):
             token_id = all_input_ids[i]
-            true_label_id = all_true_labels[i]
-
+            true_label = evaluation_label(all_true_labels[i])
+            predicted_label = evaluation_label(all_predicted_labels[i])
             token_text = tokenizer.decode([token_id], skip_special_tokens=False)
-            true_label_text = id_to_label.get(true_label_id, f"Unknown_Label_ID_{true_label_id}")
 
             # Add the condition to only print if the true label is NOT 'O'
-            if true_label_text != 'O':
+            if true_label != predicted_label:
                 # Print token and label. Handle potential sub-word tokenization (e.g., ##ing)
                 # You might want to add spaces or newlines to structure the output
                 if token_text.startswith('##'):
-                    print(f"{token_text}({true_label_text})", end="") # No space before sub-word token
+                    print(f"{token_text} as {predicted_label}({true_label})", end="") # No space before sub-word token
                 else:
-                    print(f" {token_text}({true_label_text})", end="") # Add space before new word token
+                    print(f" {token_text} as {predicted_label}({true_label})", end="") # Add space before new word token
 
 

@@ -17,7 +17,7 @@ NUM_EPOCHS = 50   # Train for more epochs
 LEARNING_RATE = 1e-4
 SAVE_DIRECTORY = "./tmp/saved_models"
 SAVE_MODEL_EVERY_N_EPOCH = NUM_EPOCHS/3
-BERT_PRINT_DEBUG_LOG = False
+BERT_PRINT_DEBUG_LOG = True
 USE_MULTI_CLASS_LABEL = True
 LABEL_MAP = {'O': 0, 'B-NAME': 1, 'I-NAME': 2,
              'B-LOCATION': 3, 'I-LOCATION': 4,

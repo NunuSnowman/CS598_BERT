@@ -184,12 +184,13 @@ def simplify_label_string(label: str, mapping_group: str = "simple") -> str:
         sim_label = "DATE"
 
     # Rule 2: Check for LOCATION keywords
-    # Add more keywords to this set to extend LOCATION mapping
     for high_level, low_level_list in LABEL_MEMBERSHIP[mapping_group]:
         for sub_label in low_level_list:
             if sub_label in label_upper:
                 sim_label = high_level
                 break
+        if sim_label != 'O':
+            break
     if sim_label != "O" and not USE_MULTI_CLASS_LABEL:
          sim_label = "PHI"
     return sim_label

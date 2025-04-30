@@ -1,18 +1,15 @@
-import os
-import random
+from sklearn.model_selection import train_test_split
+from typing import List, Tuple
+
 from sklearn.model_selection import train_test_split
 from transformers import BertTokenizerFast, BertForTokenClassification
-import torch
-from torch.utils.data import DataLoader, TensorDataset
-from typing import List, Tuple, Dict
 
+import bert_common
+from bert_common import SAVE_DIRECTORY, ProcessedRecord  # Import necessary components
+from bert_ner_train import train_model
 # Assuming these files are in the same directory or accessible in the path
 from record_file_reader import read_json_list_as_processed_records
-from record_label_maper import simplify_label_string, simplify_record_labels  # Import the label simplification function
-from bert_common import MODEL_NAME, SAVE_DIRECTORY, MAX_LENGTH, BATCH_SIZE, NUM_EPOCHS, LEARNING_RATE, ProcessedRecord, \
-    MaskInfo, num_labels  # Import necessary components
-from bert_ner_train import train_model
-from bert_ner_test import evaluate_model
+from record_label_maper import simplify_record_labels  # Import the label simplification function
 
 
 # --- Reusable Methods ---
@@ -29,11 +26,11 @@ def load_and_split_data(jsonl_path: str, test_size: float = 0.5, random_state: i
 
 
 def initialize_model_and_tokenizer() -> Tuple[BertTokenizerFast, BertForTokenClassification]:
-    print(f"\nInitializing tokenizer: {MODEL_NAME}")
-    tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)
-    print(f"Initializing model: {MODEL_NAME} with {num_labels} labels.")
+    print(f"\nInitializing tokenizer: {bert_common.model_name}")
+    tokenizer = BertTokenizerFast.from_pretrained(bert_common.model_name)
+    print(f"Initializing model: {bert_common.model_name} with {bert_common.num_labels} labels.")
     # Use the simplified_num_labels for the model
-    model = BertForTokenClassification.from_pretrained(MODEL_NAME, num_labels=num_labels)
+    model = BertForTokenClassification.from_pretrained(bert_common.model_name, num_labels=bert_common.num_labels)
     return tokenizer, model
 
 

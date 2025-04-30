@@ -1,13 +1,14 @@
-import torch
-from transformers import BertTokenizerFast, BertForTokenClassification, get_linear_schedule_with_warmup
-from torch.utils.data import DataLoader, TensorDataset
 import os
-from typing import List, Tuple, Optional, Callable
+
+import torch
+from torch.utils.data import DataLoader, TensorDataset
+from transformers import BertTokenizerFast, BertForTokenClassification, get_linear_schedule_with_warmup
 
 # Assuming these imports are available from bert_common.py
-from bert_common import ProcessedRecord, MaskInfo, MODEL_NAME, MAX_LENGTH, TOKEN_OVERLAP, BATCH_SIZE, NUM_EPOCHS, \
-    LEARNING_RATE, SAVE_DIRECTORY, LABEL_MAP, id_to_label, num_labels, create_processed_record, \
+from bert_common import ProcessedRecord, MAX_LENGTH, BATCH_SIZE, NUM_EPOCHS, \
+    LEARNING_RATE, SAVE_DIRECTORY, \
     process_data_label, SAVE_MODEL_EVERY_N_EPOCH
+
 
 def train_model(
         data: [ProcessedRecord],

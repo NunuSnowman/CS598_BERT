@@ -9,7 +9,6 @@ from typing import List, Tuple, Optional
 from common import ProcessedRecord, MaskInfo # Assuming common.py contains these definitions
 
 # --- Configuration ---
-MODEL_NAME = 'bert-base-uncased'
 MAX_LENGTH = 128 # Max sequence length for tokenization and padding
 TOKEN_OVERLAP = 32
 BATCH_SIZE = 8   # Increased batch size for efficiency
@@ -17,29 +16,30 @@ NUM_EPOCHS = 50   # Train for more epochs
 LEARNING_RATE = 1e-4
 SAVE_DIRECTORY = "./tmp/saved_models"
 SAVE_MODEL_EVERY_N_EPOCH = NUM_EPOCHS/3
-BERT_PRINT_DEBUG_LOG = True
-USE_MULTI_CLASS_LABEL = True
-LABEL_MAP = {'O': 0, 'B-NAME': 1, 'I-NAME': 2,
+BERT_PRINT_DEBUG_LOG = False
+model_name = 'bert-base-uncased'
+use_multiple_classes = True
+label_map = {'O': 0, 'B-NAME': 1, 'I-NAME': 2,
              'B-LOCATION': 3, 'I-LOCATION': 4,
              'B-DATE': 5, 'I-DATE': 6}
 
-id_to_label = {v: k for k, v in LABEL_MAP.items()} # Create reverse mapping
-num_labels = len(LABEL_MAP)
+id_to_label = {v: k for k, v in label_map.items()} # Create reverse mapping
+num_labels = len(label_map)
 
 def set_classify_type(use_multi_class: bool):
-    global USE_MULTI_CLASS_LABEL
-    global LABEL_MAP
+    global use_multiple_classes
+    global label_map
     global id_to_label
     global num_labels
-    USE_MULTI_CLASS_LABEL = use_multi_class
+    use_multiple_classes = use_multi_class
     if use_multi_class:
-        LABEL_MAP = {'O': 0, 'B-NAME': 1, 'I-NAME': 2,
+        label_map = {'O': 0, 'B-NAME': 1, 'I-NAME': 2,
                      'B-LOCATION': 3, 'I-LOCATION': 4,
                      'B-DATE': 5, 'I-DATE': 6}
     else:
-        LABEL_MAP = {'O': 0, 'B-PHI': 1, 'I-PHI': 2}
-    id_to_label = {v: k for k, v in LABEL_MAP.items()} # Create reverse mapping
-    num_labels = len(LABEL_MAP)
+        label_map = {'O': 0, 'B-PHI': 1, 'I-PHI': 2}
+    id_to_label = {v: k for k, v in label_map.items()} # Create reverse mapping
+    num_labels = len(label_map)
 
 
 def create_processed_record(text_record: str, masks: List[Tuple[int, int, str]]) -> ProcessedRecord:
@@ -82,7 +82,7 @@ def process_data_label(data: List[ProcessedRecord], tokenizer: BertTokenizerFast
     attention_masks_list = []
     labels_list = []
 
-    global LABEL_MAP
+    global label_map
     overlap_tokens = TOKEN_OVERLAP
 
     for record in data:
@@ -104,7 +104,7 @@ def process_data_label(data: List[ProcessedRecord], tokenizer: BertTokenizerFast
         full_offset_mapping = encoded_inputs_full['offset_mapping'][0].tolist()
         full_attention_mask = encoded_inputs_full['attention_mask'][0].tolist() # Get full attention mask
 
-        full_sequence_labels = [LABEL_MAP['O']] * len(full_input_ids)
+        full_sequence_labels = [label_map['O']] * len(full_input_ids)
 
         for mask in mask_info:
             char_start = mask.start
@@ -122,20 +122,20 @@ def process_data_label(data: List[ProcessedRecord], tokenizer: BertTokenizerFast
                 if token_starts_within_entity or entity_starts_within_token:
                     if is_first_token_of_entity:
                         b_label = 'B-' + entity_type
-                        if b_label in LABEL_MAP:
-                            full_sequence_labels[token_idx] = LABEL_MAP[b_label]
+                        if b_label in label_map:
+                            full_sequence_labels[token_idx] = label_map[b_label]
                             is_first_token_of_entity = False
                         else:
-                            full_sequence_labels[token_idx] = LABEL_MAP['O']
+                            full_sequence_labels[token_idx] = label_map['O']
                             is_first_token_of_entity = False
                             if b_label != 'B-O' and BERT_PRINT_DEBUG_LOG:
                                 print(f"Warning: Label '{b_label}' not found in label_map for entity type '{entity_type}'. Assigning 'O'.")
                     else:
                         i_label = 'I-' + entity_type
-                        if i_label in LABEL_MAP:
-                            full_sequence_labels[token_idx] = LABEL_MAP[i_label]
+                        if i_label in label_map:
+                            full_sequence_labels[token_idx] = label_map[i_label]
                         else:
-                            full_sequence_labels[token_idx] = LABEL_MAP['O']
+                            full_sequence_labels[token_idx] = label_map['O']
                             if i_label != 'I-O' and BERT_PRINT_DEBUG_LOG:
                                 print(f"Warning: Label '{i_label}' not found in label_map for entity type '{entity_type}'. Assigning 'O'.")
 
@@ -159,15 +159,15 @@ def process_data_label(data: List[ProcessedRecord], tokenizer: BertTokenizerFast
             # Pad the segment and labels
             padding_length = max_length - len(current_segment_input_ids)
             padded_input_ids = current_segment_input_ids + [tokenizer.pad_token_id] * padding_length
-            padded_labels = current_segment_labels + [LABEL_MAP['O']] * padding_length # Pad with O labels
+            padded_labels = current_segment_labels + [label_map['O']] * padding_length # Pad with O labels
             padded_attention_mask = current_segment_attention_mask + [0] * padding_length # Pad attention mask with 0
 
             padded_input_ids = [tokenizer.cls_token_id] + padded_input_ids[:-1] # Replace the last padding token with SEP
-            padded_labels = [LABEL_MAP['O']] + padded_labels[:-1] # CLS label is O
+            padded_labels = [label_map['O']] + padded_labels[:-1] # CLS label is O
             padded_attention_mask = [1] + padded_attention_mask[:-1] # CLS attention is 1
 
             padded_input_ids[-1] = tokenizer.sep_token_id # Set the last token to SEP
-            padded_labels[-1] = LABEL_MAP['O'] # SEP label is O
+            padded_labels[-1] = label_map['O'] # SEP label is O
             padded_attention_mask[-1] = 1 # SEP attention is 1
 
 

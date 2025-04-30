@@ -1,7 +1,8 @@
 import re
 from typing import List, Dict, Tuple, Union
 
-from bert_common import USE_MULTI_CLASS_LABEL
+import bert_common
+from bert_common import use_multiple_classes
 from common import ProcessedRecord
 LABEL_MEMBERSHIP : Dict[str, List[Union[str, List[str]]]]= {
     'simple':
@@ -191,7 +192,7 @@ def simplify_label_string(label: str, mapping_group: str = "simple") -> str:
                 break
         if sim_label != 'O':
             break
-    if sim_label != "O" and not USE_MULTI_CLASS_LABEL:
+    if sim_label != "O" and not bert_common.use_multiple_classes:
          sim_label = "PHI"
     return sim_label
 

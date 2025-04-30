@@ -1,9 +1,10 @@
+import bert_common
 from bert_common import *
 import torch
 
 
 def evaluation_label(label_id):
-    original_label = id_to_label[label_id]
+    original_label = bert_common.id_to_label[label_id]
     if original_label == 'O':
         return 'O'
     else:
@@ -147,7 +148,7 @@ def evaluate_model(data: [ProcessedRecord],
         print("\nScikit-learn not found. Install it (`pip install scikit-learn`) to see evaluation metrics.")
         print("Skipping detailed classification report.")
 
-    if BERT_PRINT_DEBUG_LOG:
+    if bert_common.BERT_PRINT_DEBUG_LOG:
         for i in range(len(all_input_ids)):
             token_id = all_input_ids[i]
             true_label = evaluation_label(all_true_labels[i])

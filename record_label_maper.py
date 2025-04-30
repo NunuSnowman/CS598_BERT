@@ -1,6 +1,7 @@
 import re
 from typing import List, Dict, Tuple, Union
 
+from bert_common import USE_MULTI_CLASS_LABEL
 from common import ProcessedRecord
 LABEL_MEMBERSHIP : Dict[str, List[Union[str, List[str]]]]= {
     'simple':
@@ -171,6 +172,7 @@ def simplify_label_string(label: str, mapping_group: str = "simple") -> str:
     if label_upper == "O":
         return "O"
 
+    sim_label = "O"
     def is_valid_date_string(s: str) -> bool:
         pattern = r'^(?:\d{1,4}-){0,2}\d{1,4}$'
         if re.match(pattern, s):
@@ -179,17 +181,18 @@ def simplify_label_string(label: str, mapping_group: str = "simple") -> str:
         return False
 
     if is_valid_date_string(label_upper):
-        return "DATE"
+        sim_label = "DATE"
 
     # Rule 2: Check for LOCATION keywords
     # Add more keywords to this set to extend LOCATION mapping
     for high_level, low_level_list in LABEL_MEMBERSHIP[mapping_group]:
         for sub_label in low_level_list:
             if sub_label in label_upper:
-                return high_level
-
-    # Default Rule: If none of the above match, return "O"
-    return "O"
+                sim_label = high_level
+                break
+    if sim_label != "O" and not USE_MULTI_CLASS_LABEL:
+         sim_label = "PHI"
+    return sim_label
 
 if __name__ == "__main__":
     print(f"'B-NAME' -> {simplify_label_string('B-NAME')}")

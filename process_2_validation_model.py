@@ -2,11 +2,16 @@ from typing import List
 
 from transformers import BertTokenizerFast, BertForTokenClassification
 
-from bert_common import MODEL_NAME, num_labels, create_processed_record, SAVE_MODEL_EVERY_N_EPOCH, NUM_EPOCHS
+import bert_common
+from bert_common import MODEL_NAME, num_labels, create_processed_record, SAVE_MODEL_EVERY_N_EPOCH, NUM_EPOCHS, \
+    BERT_PRINT_DEBUG_LOG, USE_MULTI_CLASS_LABEL, set_classify_type
 from bert_ner_test import evaluate_model
 from bert_ner_train import train_model
 from common import ProcessedRecord
 import os
+
+from record_label_maper import simplify_record_labels
+
 # --- Example Usage of the Helper ---
 
 # Creating the train_data using the helper
@@ -60,21 +65,20 @@ test_data: List[ProcessedRecord] = [
     create_processed_record("Patient arrived from New York on July 4th.", [(22, 30, "LOCATION"), (34, 43, "DATE")]), # "New York", "July 4th"
 ]
 
+train_data = simplify_record_labels(train_data)
+test_data = simplify_record_labels(test_data)
 
 if __name__ == "__main__":
+    set_classify_type(use_multi_class=True)
+    bert_common.BERT_PRINT_DEBUG_LOG = True
+    bert_common.SAVE_MODEL_EVERY_N_EPOCH = 0
     tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)
     model = BertForTokenClassification.from_pretrained(MODEL_NAME, num_labels=num_labels)
     model_path_prefix = "tmp/saved_test_model"
+    train_data = simplify_record_labels(train_data)
+    test_data = simplify_record_labels(test_data)
     train_model(train_data, tokenizer, model, save_directory=model_path_prefix)
-
     tokenizer = BertTokenizerFast.from_pretrained(MODEL_NAME)
-    for epoch in range(SAVE_MODEL_EVERY_N_EPOCH, NUM_EPOCHS + 1, SAVE_MODEL_EVERY_N_EPOCH):
-        checkpoint_path = f"tmp/saved_test_model_epoch_{epoch}"
-        if os.path.exists(checkpoint_path):
-            print(f"\nLoading and evaluating model from {checkpoint_path}")
-            eval_model = BertForTokenClassification.from_pretrained(checkpoint_path, num_labels=num_labels)
-            evaluate_model(test_data, tokenizer, eval_model)
-
 
     print(f"\nLoading and evaluating model from {model_path_prefix}")
     model = BertForTokenClassification.from_pretrained("tmp/saved_test_model", num_labels=num_labels)

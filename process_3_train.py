@@ -14,8 +14,6 @@ from bert_common import MODEL_NAME, SAVE_DIRECTORY, MAX_LENGTH, BATCH_SIZE, NUM_
 from bert_ner_train import train_model
 from bert_ner_test import evaluate_model
 
-# Create a new label map based on the simplified labels
-
 
 # --- Reusable Methods ---
 

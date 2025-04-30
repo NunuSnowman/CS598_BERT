@@ -6,7 +6,7 @@ from typing import List, Tuple, Optional, Callable
 
 # Assuming these imports are available from bert_common.py
 from bert_common import ProcessedRecord, MaskInfo, MODEL_NAME, MAX_LENGTH, TOKEN_OVERLAP, BATCH_SIZE, NUM_EPOCHS, \
-    LEARNING_RATE, SAVE_DIRECTORY, label_map, id_to_label, num_labels, create_processed_record, \
+    LEARNING_RATE, SAVE_DIRECTORY, LABEL_MAP, id_to_label, num_labels, create_processed_record, \
     process_data_label, SAVE_MODEL_EVERY_N_EPOCH
 
 def train_model(

@@ -147,3 +147,21 @@ def evaluate_model(data: [ProcessedRecord],
         print("\nScikit-learn not found. Install it (`pip install scikit-learn`) to see evaluation metrics.")
         print("Skipping detailed classification report.")
 
+    if BERT_PRINT_DEBUG_LOG:
+        for i in range(len(all_input_ids)):
+            token_id = all_input_ids[i]
+            true_label_id = all_true_labels[i]
+
+            token_text = tokenizer.decode([token_id], skip_special_tokens=False)
+            true_label_text = id_to_label.get(true_label_id, f"Unknown_Label_ID_{true_label_id}")
+
+            # Add the condition to only print if the true label is NOT 'O'
+            if true_label_text != 'O':
+                # Print token and label. Handle potential sub-word tokenization (e.g., ##ing)
+                # You might want to add spaces or newlines to structure the output
+                if token_text.startswith('##'):
+                    print(f"{token_text}({true_label_text})", end="") # No space before sub-word token
+                else:
+                    print(f" {token_text}({true_label_text})", end="") # Add space before new word token
+
+

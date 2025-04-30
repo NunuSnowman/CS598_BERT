@@ -11,12 +11,13 @@ from common import ProcessedRecord, MaskInfo # Assuming common.py contains these
 # --- Configuration ---
 MODEL_NAME = 'bert-base-uncased'
 MAX_LENGTH = 128 # Max sequence length for tokenization and padding
-TOKEN_OVERLAP = 64
-BATCH_SIZE = 8   # Increased batch size for efficiency
-NUM_EPOCHS = 50   # Train for more epochs
+TOKEN_OVERLAP = 32
+BATCH_SIZE = 32   # Increased batch size for efficiency
+NUM_EPOCHS = 20   # Train for more epochs
 LEARNING_RATE = 1e-4
 SAVE_DIRECTORY = "./tmp/saved_models"
-SAVE_MODEL_EVERY_N_EPOCH = 10
+SAVE_MODEL_EVERY_N_EPOCH = 5
+BERT_PRINT_DEBUG_LOG = True
 
 label_map = {'O': 0, 'B-NAME': 1, 'I-NAME': 2,
              'B-LOCATION': 3, 'I-LOCATION': 4,
@@ -110,7 +111,7 @@ def process_data_label(data: List[ProcessedRecord], tokenizer: BertTokenizerFast
                         else:
                             full_sequence_labels[token_idx] = label_map['O']
                             is_first_token_of_entity = False
-                            if b_label != 'B-O':
+                            if b_label != 'B-O' and BERT_PRINT_DEBUG_LOG:
                                 print(f"Warning: Label '{b_label}' not found in label_map for entity type '{entity_type}'. Assigning 'O'.")
                     else:
                         i_label = 'I-' + entity_type
@@ -118,7 +119,7 @@ def process_data_label(data: List[ProcessedRecord], tokenizer: BertTokenizerFast
                             full_sequence_labels[token_idx] = label_map[i_label]
                         else:
                             full_sequence_labels[token_idx] = label_map['O']
-                            if i_label != 'I-O':
+                            if i_label != 'I-O' and BERT_PRINT_DEBUG_LOG:
                                 print(f"Warning: Label '{i_label}' not found in label_map for entity type '{entity_type}'. Assigning 'O'.")
 
 

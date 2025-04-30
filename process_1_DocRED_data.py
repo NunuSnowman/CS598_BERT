@@ -51,7 +51,7 @@ def pseudo_de_identify_docred_single_file(data_file, output_file):
         # --- Logic for item-specific name mapping and masking ---
         item_name_mapping = {} # Mapping for names in THIS item: Masked Token -> Original Name
         used_names_in_item = {} # Mapping for names in THIS item: Original Name -> Masked Token
-        item_name_counter = 1 # Counter for generating IDs within THIS item
+        item_counter = 1 # Counter for generating IDs within THIS item
 
         all_words_in_item = [word for sentence in sents for word in sentence]
 
@@ -59,14 +59,22 @@ def pseudo_de_identify_docred_single_file(data_file, output_file):
             for vertex in vertex_list:
                 if vertex.get('type') == 'PER':
                     name = vertex.get('name')
-                    # Check if the name is a single word and appears in the sentences
-                    # and has not been assigned an ID yet for this item
-                    if name and ' ' not in name and name in all_words_in_item and name not in used_names_in_item:
-                        name_id = f"{item_name_counter}"
-                        masked_token = f"[***NAME {name_id}***]"
-                        item_name_mapping[masked_token] = name
-                        used_names_in_item[name] = masked_token
-                        item_name_counter += 1
+                    masked_token = f"[***NAME {item_counter}***]"
+                    item_name_mapping[masked_token] = name
+                    used_names_in_item[name] = masked_token
+                    item_counter += 1
+                elif vertex.get('type') == 'LOC':
+                    name = vertex.get('name')
+                    masked_token = f"[***LOCATION {item_counter}***]"
+                    item_name_mapping[masked_token] = name
+                    used_names_in_item[name] = masked_token
+                    item_counter += 1
+                elif vertex.get('type') == 'TIME':
+                    name = vertex.get('name')
+                    masked_token = f"[***DATE {item_counter}***]"
+                    item_name_mapping[masked_token] = name
+                    used_names_in_item[name] = masked_token
+                    item_counter += 1
 
         # --- Masking and Generating Mask Details ---
         masked_sents = []

@@ -7,6 +7,14 @@ from sklearn.metrics import classification_report
 
 
 def evaluation_label(label_id):
+    # Define the IGNORE_INDEX used in bert_common.py
+    IGNORE_INDEX = -100
+    if label_id == IGNORE_INDEX:
+        # Return a placeholder or None for ignored indices, or handle as needed
+        # For evaluation metrics, we will filter these out, so the exact return value here
+        # for -100 might not matter if filtered before report generation.
+        # However, let's return None or a distinct string just in case.
+        return None # Or a string like "IGNORED"
     original_label = bert_common.id_to_label[label_id]
     if original_label == 'O':
         return 'O'
@@ -16,76 +24,98 @@ def evaluation_label(label_id):
 
 def print_classification_reports(all_true_labels, all_predicted_labels, all_input_ids, tokenizer):
     """
-    Prints classification reports based on different token length criteria.
+    Prints classification reports based on different token length criteria,
+    excluding tokens with true labels equal to IGNORE_INDEX.
 
     Args:
-        all_true_labels (list): List of true label IDs for all tokens.
+        all_true_labels (list): List of true label IDs for all tokens (includes IGNORE_INDEX).
         all_predicted_labels (list): List of predicted label IDs for all tokens.
         all_input_ids (list): List of input IDs for all tokens.
         tokenizer: The BERT tokenizer with a decode method.
     """
-    try:
-        if all_true_labels and all_predicted_labels:
-            simplified_true_labels = [evaluation_label(label) for label in all_true_labels]
-            simplified_predicted_labels = [evaluation_label(label) for label in all_predicted_labels]
-            all_token_texts = [tokenizer.decode([token_id], skip_special_tokens=False) for token_id in all_input_ids]
+    # Define the IGNORE_INDEX used in bert_common.py
+    IGNORE_INDEX = -100
 
-            # Criteria 1: Including all tokens
-            print("\n--- Classification Report (All Tokens) ---")
-            report_target_names = sorted(list(set(simplified_true_labels + simplified_predicted_labels)))
-            print(classification_report(simplified_true_labels, simplified_predicted_labels,
+    # Filter out tokens where the true label is IGNORE_INDEX
+    filtered_true_labels_ids = []
+    filtered_predicted_labels_ids = []
+    filtered_input_ids = []
+
+    for i in range(len(all_true_labels)):
+        if all_true_labels[i] != IGNORE_INDEX:
+            filtered_true_labels_ids.append(all_true_labels[i])
+            filtered_predicted_labels_ids.append(all_predicted_labels[i])
+            filtered_input_ids.append(all_input_ids[i])
+
+
+    try:
+        if filtered_true_labels_ids and filtered_predicted_labels_ids:
+            # Convert filtered label IDs to simplified labels (e.g., 'O', 'NAME')
+            simplified_filtered_true_labels = [evaluation_label(label) for label in filtered_true_labels_ids]
+            simplified_filtered_predicted_labels = [evaluation_label(label) for label in filtered_predicted_labels_ids]
+            filtered_token_texts = [tokenizer.decode([token_id], skip_special_tokens=False) for token_id in filtered_input_ids]
+
+
+            # Criteria 1: Including all filtered tokens (excluding those with true label IGNORE_INDEX)
+            print("\n--- Classification Report (Filtered Tokens - Excluding IGNORE_INDEX) ---")
+            # Determine target names from the filtered simplified labels
+            report_target_names = sorted(list(set(simplified_filtered_true_labels + simplified_filtered_predicted_labels)))
+            print(classification_report(simplified_filtered_true_labels, simplified_filtered_predicted_labels,
                                         target_names=report_target_names,
                                         zero_division=0))
 
-            # Criteria 2: Including only tokens > 1 char
+            # Criteria 2: Including only filtered tokens > 1 char
             filtered_true_labels_gt1 = []
             filtered_predicted_labels_gt1 = []
-            for i in range(len(all_token_texts)):
-                # Filter out special tokens and then check length
-                if all_input_ids[i] not in [tokenizer.cls_token_id, tokenizer.sep_token_id, tokenizer.pad_token_id]:
+            for i in range(len(filtered_token_texts)):
+                # Filter out special tokens and then check length (already handled IGNORE_INDEX true labels)
+                # Check against original special token IDs just in case, though IGNORE_INDEX should cover most.
+                if filtered_input_ids[i] not in [tokenizer.cls_token_id, tokenizer.sep_token_id, tokenizer.pad_token_id]:
                     # Remove '##' prefix for length check if it exists
-                    token_text_for_length = all_token_texts[i].replace('##', '')
+                    token_text_for_length = filtered_token_texts[i].replace('##', '')
                     # Also strip potential punctuation for length check
                     token_text_for_length = token_text_for_length.strip(string.punctuation)
                     if len(token_text_for_length) > 1:
-                        filtered_true_labels_gt1.append(simplified_true_labels[i])
-                        filtered_predicted_labels_gt1.append(simplified_predicted_labels[i])
+                        filtered_true_labels_gt1.append(simplified_filtered_true_labels[i])
+                        filtered_predicted_labels_gt1.append(simplified_filtered_predicted_labels[i])
+
 
             if filtered_true_labels_gt1 and filtered_predicted_labels_gt1:
-                print("\n--- Classification Report (Tokens > 1 Char) ---")
+                print("\n--- Classification Report (Filtered Tokens > 1 Char) ---")
                 report_target_names_gt1 = sorted(list(set(filtered_true_labels_gt1 + filtered_predicted_labels_gt1)))
                 print(classification_report(filtered_true_labels_gt1, filtered_predicted_labels_gt1,
                                             target_names=report_target_names_gt1,
                                             zero_division=0))
             else:
-                print("\nNo tokens > 1 character found for evaluation.")
+                print("\nNo filtered tokens > 1 character found for evaluation.")
 
 
-            # Criteria 3: Including only tokens > 2 chars
+            # Criteria 3: Including only filtered tokens > 2 chars
             filtered_true_labels_gt2 = []
             filtered_predicted_labels_gt2 = []
-            for i in range(len(all_token_texts)):
-                # Filter out special tokens and then check length
-                if all_input_ids[i] not in [tokenizer.cls_token_id, tokenizer.sep_token_id, tokenizer.pad_token_id]:
+            for i in range(len(filtered_token_texts)):
+                # Filter out special tokens and then check length (already handled IGNORE_INDEX true labels)
+                if filtered_input_ids[i] not in [tokenizer.cls_token_id, tokenizer.sep_token_id, tokenizer.pad_token_id]:
                     # Remove '##' prefix for length check if it exists
-                    token_text_for_length = all_token_texts[i].replace('##', '')
+                    token_text_for_length = filtered_token_texts[i].replace('##', '')
                     # Also strip potential punctuation for length check
                     token_text_for_length = token_text_for_length.strip(string.punctuation)
                     if len(token_text_for_length) > 2:
-                        filtered_true_labels_gt2.append(simplified_true_labels[i])
-                        filtered_predicted_labels_gt2.append(simplified_predicted_labels[i])
+                        filtered_true_labels_gt2.append(simplified_filtered_true_labels[i])
+                        filtered_predicted_labels_gt2.append(simplified_filtered_predicted_labels[i])
+
 
             if filtered_true_labels_gt2 and filtered_predicted_labels_gt2:
-                print("\n--- Classification Report (Tokens > 2 Chars) ---")
+                print("\n--- Classification Report (Filtered Tokens > 2 Chars) ---")
                 report_target_names_gt2 = sorted(list(set(filtered_true_labels_gt2 + filtered_predicted_labels_gt2)))
                 print(classification_report(filtered_true_labels_gt2, filtered_predicted_labels_gt2,
                                             target_names=report_target_names_gt2,
                                             zero_division=0))
             else:
-                print("\nNo tokens > 2 characters found for evaluation.")
+                print("\nNo filtered tokens > 2 characters found for evaluation.")
 
         else:
-            print("\nNo true or predicted labels available for classification report.")
+            print("\nNo true or predicted labels available after filtering for classification report.")
 
     except ImportError:
         print("\nScikit-learn not found. Install it (`pip install scikit-learn`) to see evaluation metrics.")
@@ -102,140 +132,118 @@ def evaluate_model(data: [ProcessedRecord],
 
     print("Processing test data...")
 
-    # This part remains the same for getting overall predictions for the classification report
+    # process_data_label will now return labels with IGNORE_INDEX for tokens to skip
     test_processed = process_data_label(data, tokenizer, MAX_LENGTH)
 
     test_dataset = TensorDataset(
         test_processed['input_ids'],
         test_processed['attention_masks'],
-        test_processed['labels'] # Now includes true labels
+        test_processed['labels'] # This now includes true labels with IGNORE_INDEX
     )
     test_dataloader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
 
     all_true_labels = []
     all_predicted_labels = []
-    all_input_ids = []
+    all_input_ids = [] # Keep input IDs for potential debugging or token text
 
     with torch.no_grad():
         for step, batch in enumerate(test_dataloader):
             batch = tuple(t.to(device) for t in batch)
             inputs = {'input_ids': batch[0],
                       'attention_mask': batch[1]}
-            true_labels = batch[2]
+            true_labels = batch[2] # Get the true labels (including IGNORE_INDEX)
 
             outputs = model(**inputs)
             predictions = torch.argmax(outputs.logits, dim=-1)
             attention_mask = inputs['attention_mask']
 
+            # Collect all predictions and true labels for later filtering and reporting
+            # Masking by attention_mask[i] == 1 is still correct here to exclude padding
             for i in range(predictions.shape[0]):
                 seq_predictions = predictions[i][attention_mask[i] == 1].cpu().numpy()
                 seq_true_labels = true_labels[i][attention_mask[i] == 1].cpu().numpy()
                 seq_input_ids = inputs['input_ids'][i][attention_mask[i] == 1].cpu().numpy()
+
 
                 all_predicted_labels.extend(seq_predictions)
                 all_true_labels.extend(seq_true_labels)
                 all_input_ids.extend(seq_input_ids)
 
 
-    # print_predictions(all_predicted_labels, data, tokenizer)
+    # --- Pass filtered lists to reporting functions ---
+    # print_predictions(all_predicted_labels, data, tokenizer) # This function might need further modification to align with filtered data
 
-    print_classification_reports(all_true_labels, all_predicted_labels, all_input_ids, tokenizer)
+    # Filter the collected labels and input_ids before passing to reporting functions
+    # Define IGNORE_INDEX here as well for clarity or import it from bert_common
+    IGNORE_INDEX = -100 # Assuming this is the value used in bert_common
 
-    print_debug_logs(all_input_ids, all_predicted_labels, all_true_labels, tokenizer)
+    filtered_all_true_labels = []
+    filtered_all_predicted_labels = []
+    filtered_all_input_ids = []
+
+    for i in range(len(all_true_labels)):
+        if all_true_labels[i] != IGNORE_INDEX:
+            filtered_all_true_labels.append(all_true_labels[i])
+            filtered_all_predicted_labels.append(all_predicted_labels[i])
+            filtered_all_input_ids.append(all_input_ids[i])
+
+
+    # Now pass the filtered lists to the reporting functions
+    print_classification_reports(filtered_all_true_labels, filtered_all_predicted_labels, filtered_all_input_ids, tokenizer)
+
+    # Note: print_debug_logs also needs to handle the filtering or receive filtered data.
+    # For simplicity, let's update print_debug_logs to accept filtered data.
+    print_debug_logs(filtered_all_input_ids, filtered_all_predicted_labels, filtered_all_true_labels, tokenizer)
+
 
 
 def print_predictions(all_predicted_labels, data, tokenizer):
-    token_index_in_flattened_list = 0  # To keep track of our position in the flattened prediction lists
-    for sentence_index, processed_data in enumerate(data):
-        original_text = processed_data.text_record
-        encoded_inputs = tokenizer(
-            original_text,
-            padding="max_length",
-            truncation=True,
-            max_length=MAX_LENGTH,
-            return_tensors="pt",
-            return_offsets_mapping=True
-        )
-        offset_mapping = encoded_inputs['offset_mapping'][0]
-        attention_mask = encoded_inputs['attention_mask'][0]
-        input_ids = encoded_inputs['input_ids'][0]
-
-        current_entity_text = ""
-        current_entity_label = None
-        entity_start_char = -1
-        # Iterate through the tokens of the current sentence
-        for token_idx in range(len(attention_mask)):
-            # Only consider real tokens (not padding or special tokens indicated by attention_mask)
-            if attention_mask[token_idx] == 1:
-                # Get the predicted label for this specific token
-                predicted_label_id = all_predicted_labels[token_index_in_flattened_list]
-                simplified_predicted_label = evaluation_label(predicted_label_id)
-
-                # Get the original token ID to check for special tokens
-                original_token_id = input_ids[token_idx].item()
-                special_token_ids = set([tokenizer.cls_token_id, tokenizer.sep_token_id, tokenizer.pad_token_id])
-
-                # Get character offsets for the current token
-                char_start, char_end = offset_mapping[token_idx].tolist()
-
-                if simplified_predicted_label != 'O' and original_token_id not in special_token_ids:
-                    # This token is part of a named entity
-                    if current_entity_label is None:
-                        # Start of a new entity
-                        current_entity_text = original_text[char_start:char_end]
-                        current_entity_label = simplified_predicted_label
-                        entity_start_char = char_start
-                    elif simplified_predicted_label == current_entity_label:
-                        # Continuation of the current entity
-                        # Append the text, considering potential spaces in the original text
-                        # Find the gap between the end of the last token and the start of the current token
-                        previous_token_end_char = offset_mapping[token_idx - 1].tolist()[1] if token_idx > 0 and offset_mapping[token_idx - 1].tolist()[1] is not None else char_start
-                        gap_text = original_text[previous_token_end_char:char_start] if previous_token_end_char < char_start else ""
-                        current_entity_text += gap_text + original_text[char_start:char_end]
-
-                    else:
-                        # End of previous entity, start of a new one with a different label
-                        # print(f"  Entity: '{current_entity_text}', Label: {current_entity_label}")
-                        current_entity_text = original_text[char_start:char_end]
-                        current_entity_label = simplified_predicted_label
-                        entity_start_char = char_start
-                else:
-                    # This token is 'O' or a special token, which ends any ongoing entity
-                    if current_entity_label is not None:
-                        # End of an entity
-                        # print(f"  Entity: '{current_entity_text}', Label: {current_entity_label}")
-                        current_entity_text = ""
-                        current_entity_label = None
-                        entity_start_char = -1
-
-                # Move to the next token in the flattened list
-                token_index_in_flattened_list += 1
-
-        # End of sentence: check if there's an ongoing entity to print
-        if current_entity_label is not None:
-            print(f"  Entity: '{current_entity_text}', Label: {current_entity_label}")
+    # This function is more complex to update because it iterates based on the original data structure
+    # and relies on aligning with a flattened list.
+    # To correctly align with the filtered labels, this function would need significant changes
+    # or a different approach to reconstruction.
+    # For now, keeping the original print_predictions might lead to misalignment if used with filtered data.
+    # Consider if this function is still necessary or how to adapt it to the new filtering.
+    print("\nSkipping print_predictions as it needs significant updates to align with filtered data.")
+    pass # Skipping this function for now
 
 
-def print_debug_logs(all_input_ids, all_predicted_labels, all_true_labels, tokenizer):
+def print_debug_logs(filtered_input_ids, filtered_predicted_labels, filtered_true_labels, tokenizer):
+    """
+    Prints debug logs for tokens, excluding those with true labels equal to IGNORE_INDEX.
+
+    Args:
+        filtered_input_ids (list): List of input IDs for filtered tokens.
+        filtered_predicted_labels (list): List of predicted label IDs for filtered tokens.
+        filtered_true_labels (list): List of true label IDs for filtered tokens.
+        tokenizer: The BERT tokenizer with a decode method.
+    """
     if bert_common.bert_print_debug_log:
-        for i in range(len(all_input_ids)):
-            token_id = all_input_ids[i]
-            true_label = evaluation_label(all_true_labels[i])
-            predicted_label = evaluation_label(all_predicted_labels[i])
+        # Define IGNORE_INDEX here or import it if needed, but it's already filtered out.
+        # IGNORE_INDEX = -100
+        count = 0
+        for i in range(len(filtered_input_ids)):
+            token_id = filtered_input_ids[i]
+            true_label = evaluation_label(filtered_true_labels[i]) # evaluation_label now handles None for -100
+            predicted_label = evaluation_label(filtered_predicted_labels[i])
+
+            # Skip printing if the true label was originally IGNORE_INDEX (already filtered, but double check)
+            if filtered_true_labels[i] == -100: # Use the raw ID for the check
+                continue
+
+            if count%20 == 0:
+                print("\n")
+            count += 1
             token_text = tokenizer.decode([token_id], skip_special_tokens=False)
 
-            if i%20 == 0:
-                print("\n")
-            # Add the condition to only print if the true label is NOT 'O'
+            # Now true_label and predicted_label from evaluation_label won't be None if original was not -100
             if true_label != predicted_label:
                 # Print token and label. Handle potential sub-word tokenization (e.g., ##ing)
                 # You might want to add spaces or newlines to structure the output
                 if token_text.startswith('##'):
-                    print(f"{token_text}❌ {predicted_label}({true_label})\t", end="")  # No space before sub-word token
+                    print(f"{token_text}❌ {predicted_label}({true_label}) ", end="")  # No space before sub-word token
                 else:
-                    print(f"{token_text}❌ {predicted_label}({true_label})\t",
+                    print(f"{token_text}❌ {predicted_label}({true_label}) ",
                           end="")  # Add space before new word token
-            elif true_label != "O":
-                    print(f"{token_text}✅ ({true_label})\t")
-
-
+            elif true_label != "O": # Only print correctly predicted non-'O' labels
+                print(f"{token_text}✅ ({true_label}) ")

@@ -224,14 +224,18 @@ def print_debug_logs(all_input_ids, all_predicted_labels, all_true_labels, token
             predicted_label = evaluation_label(all_predicted_labels[i])
             token_text = tokenizer.decode([token_id], skip_special_tokens=False)
 
+            if i%20 == 0:
+                print("\n")
             # Add the condition to only print if the true label is NOT 'O'
             if true_label != predicted_label:
                 # Print token and label. Handle potential sub-word tokenization (e.g., ##ing)
                 # You might want to add spaces or newlines to structure the output
                 if token_text.startswith('##'):
-                    print(f"{token_text} as {predicted_label}({true_label})", end="")  # No space before sub-word token
+                    print(f"{token_text}❌ {predicted_label}({true_label})\t", end="")  # No space before sub-word token
                 else:
-                    print(f" {token_text} as {predicted_label}({true_label})",
+                    print(f"{token_text}❌ {predicted_label}({true_label})\t",
                           end="")  # Add space before new word token
+            elif true_label != "O":
+                    print(f"{token_text}✅ ({true_label})\t")
 
 

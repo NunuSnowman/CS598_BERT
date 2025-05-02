@@ -7,9 +7,7 @@ from sklearn.metrics import classification_report
 
 
 def evaluation_label(label_id):
-    # Define the IGNORE_INDEX used in bert_common.py
-    IGNORE_INDEX = -100
-    if label_id == IGNORE_INDEX:
+    if label_id == bert_common.IGNORE_INDEX:
         # Return a placeholder or None for ignored indices, or handle as needed
         # For evaluation metrics, we will filter these out, so the exact return value here
         # for -100 might not matter if filtered before report generation.

@@ -1,6 +1,9 @@
+import string
+
 import bert_common
 from bert_common import *
 import torch
+from sklearn.metrics import classification_report
 
 
 def evaluation_label(label_id):
@@ -10,6 +13,83 @@ def evaluation_label(label_id):
     else:
         # Remove B- and I- prefixes
         return original_label[2:]
+
+def print_classification_reports(all_true_labels, all_predicted_labels, all_input_ids, tokenizer):
+    """
+    Prints classification reports based on different token length criteria.
+
+    Args:
+        all_true_labels (list): List of true label IDs for all tokens.
+        all_predicted_labels (list): List of predicted label IDs for all tokens.
+        all_input_ids (list): List of input IDs for all tokens.
+        tokenizer: The BERT tokenizer with a decode method.
+    """
+    try:
+        if all_true_labels and all_predicted_labels:
+            simplified_true_labels = [evaluation_label(label) for label in all_true_labels]
+            simplified_predicted_labels = [evaluation_label(label) for label in all_predicted_labels]
+            all_token_texts = [tokenizer.decode([token_id], skip_special_tokens=False) for token_id in all_input_ids]
+
+            # Criteria 1: Including all tokens
+            print("\n--- Classification Report (All Tokens) ---")
+            report_target_names = sorted(list(set(simplified_true_labels + simplified_predicted_labels)))
+            print(classification_report(simplified_true_labels, simplified_predicted_labels,
+                                        target_names=report_target_names,
+                                        zero_division=0))
+
+            # Criteria 2: Including only tokens > 1 char
+            filtered_true_labels_gt1 = []
+            filtered_predicted_labels_gt1 = []
+            for i in range(len(all_token_texts)):
+                # Filter out special tokens and then check length
+                if all_input_ids[i] not in [tokenizer.cls_token_id, tokenizer.sep_token_id, tokenizer.pad_token_id]:
+                    # Remove '##' prefix for length check if it exists
+                    token_text_for_length = all_token_texts[i].replace('##', '')
+                    # Also strip potential punctuation for length check
+                    token_text_for_length = token_text_for_length.strip(string.punctuation)
+                    if len(token_text_for_length) > 1:
+                        filtered_true_labels_gt1.append(simplified_true_labels[i])
+                        filtered_predicted_labels_gt1.append(simplified_predicted_labels[i])
+
+            if filtered_true_labels_gt1 and filtered_predicted_labels_gt1:
+                print("\n--- Classification Report (Tokens > 1 Char) ---")
+                report_target_names_gt1 = sorted(list(set(filtered_true_labels_gt1 + filtered_predicted_labels_gt1)))
+                print(classification_report(filtered_true_labels_gt1, filtered_predicted_labels_gt1,
+                                            target_names=report_target_names_gt1,
+                                            zero_division=0))
+            else:
+                print("\nNo tokens > 1 character found for evaluation.")
+
+
+            # Criteria 3: Including only tokens > 2 chars
+            filtered_true_labels_gt2 = []
+            filtered_predicted_labels_gt2 = []
+            for i in range(len(all_token_texts)):
+                # Filter out special tokens and then check length
+                if all_input_ids[i] not in [tokenizer.cls_token_id, tokenizer.sep_token_id, tokenizer.pad_token_id]:
+                    # Remove '##' prefix for length check if it exists
+                    token_text_for_length = all_token_texts[i].replace('##', '')
+                    # Also strip potential punctuation for length check
+                    token_text_for_length = token_text_for_length.strip(string.punctuation)
+                    if len(token_text_for_length) > 2:
+                        filtered_true_labels_gt2.append(simplified_true_labels[i])
+                        filtered_predicted_labels_gt2.append(simplified_predicted_labels[i])
+
+            if filtered_true_labels_gt2 and filtered_predicted_labels_gt2:
+                print("\n--- Classification Report (Tokens > 2 Chars) ---")
+                report_target_names_gt2 = sorted(list(set(filtered_true_labels_gt2 + filtered_predicted_labels_gt2)))
+                print(classification_report(filtered_true_labels_gt2, filtered_predicted_labels_gt2,
+                                            target_names=report_target_names_gt2,
+                                            zero_division=0))
+            else:
+                print("\nNo tokens > 2 characters found for evaluation.")
+
+        else:
+            print("\nNo true or predicted labels available for classification report.")
+
+    except ImportError:
+        print("\nScikit-learn not found. Install it (`pip install scikit-learn`) to see evaluation metrics.")
+        print("Skipping detailed classification report.")
 
 
 def evaluate_model(data: [ProcessedRecord],
@@ -57,10 +137,15 @@ def evaluate_model(data: [ProcessedRecord],
                 all_input_ids.extend(seq_input_ids)
 
 
-    # --- Print Predicted Entities with Original Text (Sentence by Sentence) ---
-    print("\n--- Predicted Entities ---")
+    # print_predictions(all_predicted_labels, data, tokenizer)
 
-    token_index_in_flattened_list = 0 # To keep track of our position in the flattened prediction lists
+    print_classification_reports(all_true_labels, all_predicted_labels, all_input_ids, tokenizer)
+
+    print_debug_logs(all_input_ids, all_predicted_labels, all_true_labels, tokenizer)
+
+
+def print_predictions(all_predicted_labels, data, tokenizer):
+    token_index_in_flattened_list = 0  # To keep track of our position in the flattened prediction lists
     for sentence_index, processed_data in enumerate(data):
         original_text = processed_data.text_record
         encoded_inputs = tokenizer(
@@ -130,24 +215,8 @@ def evaluate_model(data: [ProcessedRecord],
         if current_entity_label is not None:
             print(f"  Entity: '{current_entity_text}', Label: {current_entity_label}")
 
-    try:
-        from sklearn.metrics import classification_report
 
-        simplified_true_labels_report = [evaluation_label(label) for label in all_true_labels]
-        simplified_predicted_labels_report = [evaluation_label(label) for label in all_predicted_labels]
-
-        report_target_names = sorted(list(set(simplified_true_labels_report + simplified_predicted_labels_report)))
-
-
-        print("\nClassification Report:")
-        print(classification_report(simplified_true_labels_report, simplified_predicted_labels_report,
-                                    target_names=report_target_names,
-                                    zero_division=0)) # Handle cases where a label has no true/predicted instances
-
-    except ImportError:
-        print("\nScikit-learn not found. Install it (`pip install scikit-learn`) to see evaluation metrics.")
-        print("Skipping detailed classification report.")
-
+def print_debug_logs(all_input_ids, all_predicted_labels, all_true_labels, tokenizer):
     if bert_common.bert_print_debug_log:
         for i in range(len(all_input_ids)):
             token_id = all_input_ids[i]
@@ -160,8 +229,9 @@ def evaluate_model(data: [ProcessedRecord],
                 # Print token and label. Handle potential sub-word tokenization (e.g., ##ing)
                 # You might want to add spaces or newlines to structure the output
                 if token_text.startswith('##'):
-                    print(f"{token_text} as {predicted_label}({true_label})", end="") # No space before sub-word token
+                    print(f"{token_text} as {predicted_label}({true_label})", end="")  # No space before sub-word token
                 else:
-                    print(f" {token_text} as {predicted_label}({true_label})", end="") # Add space before new word token
+                    print(f" {token_text} as {predicted_label}({true_label})",
+                          end="")  # Add space before new word token
 
 

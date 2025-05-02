@@ -11,7 +11,7 @@ from common import ProcessedRecord, MaskInfo # Assuming common.py contains these
 # --- Configuration ---
 MAX_LENGTH = 128 # Max sequence length for tokenization and padding
 TOKEN_OVERLAP = 32
-BATCH_SIZE = 32   # Increased batch size for efficiency
+BATCH_SIZE = 8   # Increased batch size for efficiency
 NUM_EPOCHS = 20   # Train for more epochs
 LEARNING_RATE = 1e-4
 SAVE_DIRECTORY = "./tmp/saved_models"
@@ -19,9 +19,10 @@ SAVE_MODEL_EVERY_N_EPOCH = NUM_EPOCHS/3
 bert_print_debug_log = False
 model_name = 'bert-base-uncased'
 use_multiple_classes = True
-label_map = {'O': 0, 'B-NAME': 1, 'I-NAME': 2,
-             'B-LOCATION': 3, 'I-LOCATION': 4,
-             'B-DATE': 5, 'I-DATE': 6}
+multi_class_label_map = {'O': 0, 'B-NAME': 1, 'I-NAME': 2,
+            'B-LOCATION': 3, 'I-LOCATION': 4,
+            'B-DATE': 5, 'I-DATE': 6, 'B-CONTACT': 7, 'I-CONTACT': 8, }
+label_map = multi_class_label_map
 
 id_to_label = {v: k for k, v in label_map.items()} # Create reverse mapping
 num_labels = len(label_map)
@@ -33,9 +34,7 @@ def set_classify_type(use_multi_class: bool):
     global num_labels
     use_multiple_classes = use_multi_class
     if use_multi_class:
-        label_map = {'O': 0, 'B-NAME': 1, 'I-NAME': 2,
-                     'B-LOCATION': 3, 'I-LOCATION': 4,
-                     'B-DATE': 5, 'I-DATE': 6}
+        label_map = multi_class_label_map
     else:
         label_map = {'O': 0, 'B-PHI': 1, 'I-PHI': 2}
     id_to_label = {v: k for k, v in label_map.items()} # Create reverse mapping

@@ -20,7 +20,7 @@ LABEL_MEMBERSHIP : Dict[str, List[Union[str, List[str]]]]= {
                     'PTNAMEINITIAL',
                     'KEYVALUE',
                 ]
-            ], ['PROFESSION', ['PROFESSION']],
+            ],
             [
                 'LOCATION',
                 [
@@ -28,15 +28,8 @@ LABEL_MEMBERSHIP : Dict[str, List[Union[str, List[str]]]]= {
                     'STATE', 'CITY', 'COUNTRY', 'ZIP', 'LOCATION-OTHER',
                     'PROTECTED_ENTITY', 'PROTECTED ENTITY', 'NATIONALITY'
                 ]
-            ], ['AGE', ['AGE', 'AGE_>_89', 'AGE > 89']],
-            ['DATE', ['DATE', 'DATEYEAR']],
-            [
-                'ID',
-                [
-                    'BIOID', 'DEVICE', 'HEALTHPLAN', 'IDNUM', 'MEDICALRECORD',
-                    'ID', 'IDENTIFIER', 'OTHER'
-                ]
             ],
+            ['DATE', ['DATE', 'DATEYEAR']],
             [
                 'CONTACT',
                 ['EMAIL', 'FAX', 'PHONE', 'CONTACT', 'IPADDR', 'IPADDRESS']

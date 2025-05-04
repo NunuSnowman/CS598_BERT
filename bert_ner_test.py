@@ -20,7 +20,7 @@ def evaluation_label(label_id):
         # Remove B- and I- prefixes
         return original_label[2:]
 
-def print_classification_reports(all_true_labels, all_predicted_labels, all_input_ids, tokenizer):
+def print_classification_reports(filtered_true_labels_ids, filtered_predicted_labels_ids, filtered_input_ids, tokenizer):
     """
     Prints classification reports based on different token length criteria,
     excluding tokens with true labels equal to IGNORE_INDEX.
@@ -31,19 +31,6 @@ def print_classification_reports(all_true_labels, all_predicted_labels, all_inpu
         all_input_ids (list): List of input IDs for all tokens.
         tokenizer: The BERT tokenizer with a decode method.
     """
-    # Define the IGNORE_INDEX used in bert_common.py
-    IGNORE_INDEX = -100
-
-    # Filter out tokens where the true label is IGNORE_INDEX
-    filtered_true_labels_ids = []
-    filtered_predicted_labels_ids = []
-    filtered_input_ids = []
-
-    for i in range(len(all_true_labels)):
-        if all_true_labels[i] != IGNORE_INDEX:
-            filtered_true_labels_ids.append(all_true_labels[i])
-            filtered_predicted_labels_ids.append(all_predicted_labels[i])
-            filtered_input_ids.append(all_input_ids[i])
 
 
     try:
@@ -173,19 +160,18 @@ def evaluate_model(data: [ProcessedRecord],
 
     # Filter the collected labels and input_ids before passing to reporting functions
     # Define IGNORE_INDEX here as well for clarity or import it from bert_common
-    IGNORE_INDEX = -100 # Assuming this is the value used in bert_common
 
     filtered_all_true_labels = []
     filtered_all_predicted_labels = []
     filtered_all_input_ids = []
 
     for i in range(len(all_true_labels)):
-        if all_true_labels[i] != IGNORE_INDEX:
+        if all_true_labels[i] != bert_common.IGNORE_INDEX:
             filtered_all_true_labels.append(all_true_labels[i])
             filtered_all_predicted_labels.append(all_predicted_labels[i])
             filtered_all_input_ids.append(all_input_ids[i])
 
-
+    print(f"origin data size = {len(all_true_labels)}, filtered data size = {len(filtered_all_true_labels)}")
     # Now pass the filtered lists to the reporting functions
     print_classification_reports(filtered_all_true_labels, filtered_all_predicted_labels, filtered_all_input_ids, tokenizer)
 

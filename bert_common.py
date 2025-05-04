@@ -12,11 +12,12 @@ from common import ProcessedRecord, MaskInfo
 MAX_LENGTH = 128 # Max sequence length for tokenization and padding
 TOKEN_OVERLAP = 32
 BATCH_SIZE = 8   # Increased batch size for efficiency
-NUM_EPOCHS = 20   # Train for more epochs
-LEARNING_RATE = 1e-4
+NUM_EPOCHS = 5   # Train for more epochs
+LEARNING_RATE = 5e-5
+WARM_UP_RATIO = 0.4
 IGNORE_INDEX = -100 # Value to use for ignoring loss on specific tokens
 SAVE_DIRECTORY = "./tmp/saved_models"
-SAVE_MODEL_EVERY_N_EPOCH = NUM_EPOCHS/3
+SAVE_MODEL_EVERY_N_EPOCH = 0
 bert_print_debug_log = False
 model_name = 'bert-base-uncased'
 use_multiple_classes = True

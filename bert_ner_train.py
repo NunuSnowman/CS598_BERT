@@ -4,6 +4,7 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 from transformers import BertTokenizerFast, BertForTokenClassification, get_linear_schedule_with_warmup
 
+import bert_common
 # Assuming these imports are available from bert_common.py
 from bert_common import ProcessedRecord, MAX_LENGTH, BATCH_SIZE, NUM_EPOCHS, \
     LEARNING_RATE, SAVE_DIRECTORY, \
@@ -36,7 +37,7 @@ def train_model(
     total_steps = len(train_dataloader) * NUM_EPOCHS
     scheduler = get_linear_schedule_with_warmup(
         optimizer,
-        num_warmup_steps=int(0.1 * total_steps),  # 10% warmup
+        num_warmup_steps=int(bert_common.WARM_UP_RATIO * total_steps),  # 10% warmup
         num_training_steps=total_steps
     )
     # --- Training Loop ---

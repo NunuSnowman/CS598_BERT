@@ -216,7 +216,7 @@ def print_debug_logs(filtered_input_ids, filtered_predicted_labels, filtered_tru
                 print("Warning, filtered data contains IGNORE_INDEX.")
                 continue
 
-            if count%20 == 0:
+            if i%100 == 0:
                 print("\n")
             count += 1
             token_text = tokenizer.decode([token_id], skip_special_tokens=False)

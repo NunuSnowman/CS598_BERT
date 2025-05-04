@@ -213,6 +213,7 @@ def print_debug_logs(filtered_input_ids, filtered_predicted_labels, filtered_tru
 
             # Skip printing if the true label was originally IGNORE_INDEX (already filtered, but double check)
             if filtered_true_labels[i] == -100: # Use the raw ID for the check
+                print("Warning, filtered data contains IGNORE_INDEX.")
                 continue
 
             if count%20 == 0:
@@ -225,7 +226,7 @@ def print_debug_logs(filtered_input_ids, filtered_predicted_labels, filtered_tru
                 # Print token and label. Handle potential sub-word tokenization (e.g., ##ing)
                 # You might want to add spaces or newlines to structure the output
                 if token_text.startswith('##'):
-                    print(f"{token_text}❌ {predicted_label}({true_label}) ", end="")  # No space before sub-word token
+                    print(f"{token_text}❌ {predicted_label}({true_label}) ")  # No space before sub-word token
                 else:
                     print(f"{token_text}❌ {predicted_label}({true_label}) ",
                           end="")  # Add space before new word token

@@ -71,7 +71,7 @@ def train_model(
 
             total_loss += loss.item()
 
-            if (step + 1) % 10 == 0 or step == 0:  # Print first step and every 10 steps
+            if (step + 1) % 30 == 0 or step == 0:  # Print first step and every 10 steps
                 print(f"  Epoch {epoch + 1}, Step {step + 1}, Loss: {loss.item():.4f}")
 
 

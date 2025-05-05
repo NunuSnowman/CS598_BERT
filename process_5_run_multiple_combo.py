@@ -21,10 +21,18 @@ def run():
 
 
 if __name__ == "__main__":
-    bert_common.bert_print_debug_log = True
+    bert_common.bert_print_debug_log = False
     bert_common.SAVE_MODEL_EVERY_N_EPOCH = 0
-    bert_common.set_classify_type(use_multi_class=True)
-    print(f"Using model {bert_common.model_name}")
-    run()
-    bert_common.set_classify_type(use_multi_class=False)
-    run()
+
+    for model_name in [
+        'bert-base-uncased',
+        "allenai/scibert_scivocab_cased",
+        "dmis-lab/biobert-base-cased-v1.1",
+        "emilyalsentzer/Bio_ClinicalBERT"
+    ]:
+        bert_common.model_name = model_name
+        bert_common.set_classify_type(use_multi_class=True)
+        print(f"Using model {bert_common.model_name}")
+        run()
+        bert_common.set_classify_type(use_multi_class=False)
+        run()

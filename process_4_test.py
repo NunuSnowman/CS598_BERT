@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     tokenizer, model = initialize_model_and_tokenizer()
 
-    for epoch in range(SAVE_MODEL_EVERY_N_EPOCH, NUM_EPOCHS + 1, SAVE_MODEL_EVERY_N_EPOCH):
+    for epoch in range(SAVE_MODEL_EVERY_N_EPOCH, bert_common.NUM_EPOCHS + 1, SAVE_MODEL_EVERY_N_EPOCH):
         checkpoint_path = f"tmp/saved_models_epoch_{epoch}"
         if os.path.exists(checkpoint_path):
             print(f"\nLoading and evaluating model from {checkpoint_path}")

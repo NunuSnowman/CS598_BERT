@@ -9,6 +9,7 @@ from bert_ner_train import train_model
 from common import ProcessedRecord
 from record_label_maper import simplify_record_labels
 
+from transformers import AutoTokenizer, AutoModelForTokenClassification, TrainingArguments, Trainer
 # --- Example Usage of the Helper ---
 
 # Creating the train_data using the helper
@@ -79,15 +80,15 @@ test_data = simplify_record_labels(test_data)
 def run():
     global train_data
     global test_data
-    tokenizer = BertTokenizerFast.from_pretrained(bert_common.model_name)
-    model = BertForTokenClassification.from_pretrained(bert_common.model_name, num_labels=bert_common.num_labels)
+    tokenizer = AutoTokenizer.from_pretrained(bert_common.model_name)
+    model = AutoModelForTokenClassification.from_pretrained(bert_common.model_name, num_labels=bert_common.num_labels)
     model_path_prefix = "tmp/saved_test_model"
     train = simplify_record_labels(train_data)
     test = simplify_record_labels(test_data)
     train_model(train, tokenizer, model, save_directory=model_path_prefix)
     tokenizer = BertTokenizerFast.from_pretrained(bert_common.model_name)
     print(f"\nLoading and evaluating model from {model_path_prefix}")
-    model = BertForTokenClassification.from_pretrained("tmp/saved_test_model", num_labels=bert_common.num_labels)
+    model = AutoModelForTokenClassification.from_pretrained("tmp/saved_test_model", num_labels=bert_common.num_labels)
     evaluate_model(test, tokenizer, model)
 
 

@@ -34,7 +34,7 @@ def train_model(
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     model.to(device)
 
-    total_steps = len(train_dataloader) * NUM_EPOCHS
+    total_steps = len(train_dataloader) * bert_common.NUM_EPOCHS
     scheduler = get_linear_schedule_with_warmup(
         optimizer,
         num_warmup_steps=int(bert_common.WARM_UP_RATIO * total_steps),  # 10% warmup
@@ -43,7 +43,7 @@ def train_model(
     # --- Training Loop ---
     print(f"\nTraining on device: {device}")
     model.train()  # Set the model to training mode
-    for epoch in range(NUM_EPOCHS):
+    for epoch in range(bert_common.NUM_EPOCHS):
         total_loss = 0
         # Iterate over batches from the DataLoader
         for step, batch in enumerate(train_dataloader):
@@ -77,7 +77,7 @@ def train_model(
 
         avg_loss = total_loss / len(train_dataloader)
         print(f"Epoch {epoch + 1} Complete, Average Loss: {avg_loss:.4f}")
-        if SAVE_MODEL_EVERY_N_EPOCH != 0 and (epoch + 1) % SAVE_MODEL_EVERY_N_EPOCH == 0 and epoch+1 != NUM_EPOCHS :
+        if SAVE_MODEL_EVERY_N_EPOCH != 0 and (epoch + 1) % SAVE_MODEL_EVERY_N_EPOCH == 0 and epoch+1 != bert_common.NUM_EPOCHS :
             epoch_save_directory = f"{save_directory}_epoch_{epoch + 1}"
             os.makedirs(epoch_save_directory, exist_ok=True)
             model.save_pretrained(epoch_save_directory)

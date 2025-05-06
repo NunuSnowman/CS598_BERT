@@ -52,4 +52,4 @@ if __name__ == "__main__":
 
     validator = RecordValidator()
     validator.run_validation("data/physionet_nurse")
-    validator.run_validation("data/DocREDv2")
+    validator.run_validation("data/DocRED")

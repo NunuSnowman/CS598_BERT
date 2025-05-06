@@ -5,7 +5,7 @@ import re
 # --- Configuration ---
 # Set these paths according to your environment
 in_path = "downloaded/DocRED/data" # Path to the directory containing DocRED data files.
-out_path = "data/DocREDv2" # Path to the directory to save processed data.
+out_path = "data/DocRED" # Path to the directory to save processed data.
 data_file_name = "train_distant.json" # Name of the DocRED data file to process.
 output_file_name = "processed_data.jsonl" # Name of the output JSONL file.
 # --- End Configuration ---

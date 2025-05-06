@@ -8,8 +8,6 @@ from process_3_train import load_and_split_data, initialize_model_and_tokenizer
 
 
 def run():
-    bert_common.bert_print_debug_log = True
-    bert_common.SAVE_MODEL_EVERY_N_EPOCH = 0
     jsonl_file_path = './data/physionet_nurse/processed_data.jsonl'
     train_data, test_data = load_and_split_data(jsonl_file_path)
     tokenizer, model = initialize_model_and_tokenizer()

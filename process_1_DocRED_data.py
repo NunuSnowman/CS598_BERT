@@ -86,6 +86,11 @@ def pseudo_de_identify_docred_single_file(data_file, output_file):
                 mention_pos_list = vertex.get('pos') # This should be the list like [[start, end+1]]
 
                 # We only mask PER, LOC, TIME and need valid sent_id and pos list
+                mapping = {
+                    'PER': 'NAME',
+                    'LOC': 'LOCATION',
+                    'TIME': 'DATE'
+                }
                 if entity_type in ['PER', 'LOC', 'TIME']:
                     # Validate sent_id
                     if not isinstance(mention_sent_id, int) or mention_sent_id < 0 or mention_sent_id >= len(sents):
@@ -113,7 +118,7 @@ def pseudo_de_identify_docred_single_file(data_file, output_file):
                     mention_key = (mention_sent_id, start_token_idx, end_token_idx)
 
                     # Generate a unique masked token for THIS mention
-                    masked_token_str = f"[***{entity_type.upper()} {mention_counter}***]"
+                    masked_token_str = f"[**{mapping[entity_type.upper()]} {mention_counter}**]"
 
                     # Store masking info mapped to the mention's span
                     # Check for potential duplicate keys if the same span is listed multiple times for the same vertex (shouldn't happen in standard data but good safety)

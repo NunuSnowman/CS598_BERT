@@ -19,8 +19,12 @@ os.makedirs(out_path, exist_ok=True)
 
 def pseudo_de_identify_docred_single_file(data_file, output_file):
     """
-    Reads a DocRED data file, masks person names with item-specific IDs,
-    and saves the original text, masked text, and mask details to a single JSONL file.
+    Reads a DocRED data file, masks entities (PER, LOC, TIME) with item-specific IDs
+    based on vertex spans and sentence IDs, calculates correct offsets,
+     and saves the original text, masked text, and mask details to a single JSONL file.
+
+    Handles the DocRED format where 'pos' is a list of [start, end+1] pairs
+    and 'sent_id' is a separate key for the vertex mention.
 
     Args:
         data_file (str): Path to the input DocRED JSON file.
@@ -45,81 +49,151 @@ def pseudo_de_identify_docred_single_file(data_file, output_file):
         sents = item.get('sents', [])
         vertex_set = item.get('vertexSet', [])
 
-        # --- Prepare Original Text ---
-        original_item_text = ' '.join([' '.join(s) for s in sents])
+        # --- Step 1: Reconstruct Original Text and Calculate Token Offsets ---
+        # This part remains the same, it correctly builds text and token offsets
+        original_item_text = ""
+        token_char_offsets = [] # List of lists: token_char_offsets[sent_idx][token_idx] = (start_char, end_char)
+        current_offset = 0
 
-        # --- Logic for item-specific name mapping and masking ---
-        item_name_mapping = {} # Mapping for names in THIS item: Masked Token -> Original Name
-        used_names_in_item = {} # Mapping for names in THIS item: Original Name -> Masked Token
-        item_counter = 1 # Counter for generating IDs within THIS item
+        for sent_idx, sentence in enumerate(sents):
+            sentence_token_offsets = []
+            for token_idx, token in enumerate(sentence):
+                # Add space before token if it's not the very first token in the item
+                if current_offset > 0:
+                    original_item_text += ' '
+                    current_offset += 1
 
-        all_words_in_item = [word for sentence in sents for word in sentence]
+                token_start = current_offset
+                original_item_text += token
+                token_end = current_offset + len(token)
+                sentence_token_offsets.append((token_start, token_end))
+                current_offset = token_end
+
+            token_char_offsets.append(sentence_token_offsets)
+
+        # --- Step 2: Prepare Entity Masking Information Map (Corrected) ---
+        # Map (sent_idx, start_token_idx, end_token_idx) -> {masked_token, original_name, entity_type, mention_id}
+        entity_mask_map = {}
+        mention_counter = 1 # Counter for generating unique IDs for each mention
 
         for vertex_list in vertex_set:
             for vertex in vertex_list:
-                if vertex.get('type') == 'PER':
-                    name = vertex.get('name')
-                    masked_token = f"[***NAME {item_counter}***]"
-                    item_name_mapping[masked_token] = name
-                    used_names_in_item[name] = masked_token
-                    item_counter += 1
-                elif vertex.get('type') == 'LOC':
-                    name = vertex.get('name')
-                    masked_token = f"[***LOCATION {item_counter}***]"
-                    item_name_mapping[masked_token] = name
-                    used_names_in_item[name] = masked_token
-                    item_counter += 1
-                elif vertex.get('type') == 'TIME':
-                    name = vertex.get('name')
-                    masked_token = f"[***DATE {item_counter}***]"
-                    item_name_mapping[masked_token] = name
-                    used_names_in_item[name] = masked_token
-                    item_counter += 1
+                entity_type = vertex.get('type')
+                original_name = vertex.get('name')
 
-        # --- Masking and Generating Mask Details ---
+                # --- Correctly get sent_id and pos list for this mention ---
+                mention_sent_id = vertex.get('sent_id')
+                mention_pos_list = vertex.get('pos') # This should be the list like [[start, end+1]]
+
+                # We only mask PER, LOC, TIME and need valid sent_id and pos list
+                if entity_type in ['PER', 'LOC', 'TIME']:
+                    # Validate sent_id
+                    if not isinstance(mention_sent_id, int) or mention_sent_id < 0 or mention_sent_id >= len(sents):
+                        print(f"Warning: Skipping vertex '{original_name}' with invalid 'sent_id': {mention_sent_id}")
+                        continue
+
+                    # Validate pos list
+                    if not isinstance(mention_pos_list, list):
+                        print(f"Warning: Skipping vertex '{original_name}' (sent_id: {mention_sent_id}) with non-list 'pos' value: {mention_pos_list}")
+                        continue
+
+                    # Iterate through the spans *within* the 'pos' list for this mention
+
+                        # If the span format is correct, extract start and end token indices
+                    start_token_idx = mention_pos_list[0] # DocRED format: [start_token, end_token + 1]
+                    end_token_idx = mention_pos_list[1] - 1 # Adjust to be inclusive end token index
+
+                    # Validate token indices against sentence length
+                    if start_token_idx < 0 or end_token_idx >= len(sents[mention_sent_id]) or start_token_idx > end_token_idx:
+                        print(f"Warning: Skipping entity '{original_name}' (type: {entity_type}) in sent {mention_sent_id} with invalid token indices: [{start_token_idx}, {end_token_idx+1}]")
+                        continue
+
+
+                    # Key based on the mention's full position (sent_idx, start, end)
+                    mention_key = (mention_sent_id, start_token_idx, end_token_idx)
+
+                    # Generate a unique masked token for THIS mention
+                    masked_token_str = f"[***{entity_type.upper()} {mention_counter}***]"
+
+                    # Store masking info mapped to the mention's span
+                    # Check for potential duplicate keys if the same span is listed multiple times for the same vertex (shouldn't happen in standard data but good safety)
+                    if mention_key in entity_mask_map:
+                        # This case means the exact same token span in the exact same sentence
+                        # is listed multiple times for the same entity vertex mention.
+                        # We'll just overwrite, but it indicates unusual data.
+                        print(f"Warning: Duplicate mention key found for entity '{original_name}' at {mention_key}. Overwriting.")
+
+
+                    entity_mask_map[mention_key] = {
+                        "masked_token_str": masked_token_str,
+                        "original_name": original_name,
+                        "entity_type": entity_type,
+                        "mention_id": mention_counter # Store the counter for potential use in label
+                    }
+                    mention_counter += 1 # Increment for the next valid mention span
+
+
+        # --- Step 3: Perform Masking and Generate Mask Details ---
+        # This part uses the entity_mask_map and token_char_offsets, and remains similar
         masked_sents = []
         masks = []
-        current_offset = 0 # Keep track of the current index in the original text
 
-        for sentence in sents:
+        for sent_idx, sentence in enumerate(sents):
             masked_sentence = []
-            # Join words with a space, handling potential empty sentences or words
-            sentence_text = ' '.join(word for word in sentence)
-            word_offset = 0 # Keep track of index within the current sentence_text
+            token_idx_in_sentence = 0
+            while token_idx_in_sentence < len(sentence):
+                # Check if the current token is the start of ANY mention span in our map
+                current_span_key = None
+                mask_info = None
+                span_end_token_idx = token_idx_in_sentence - 1 # Initialize end index before checking
 
-            for i, word in enumerate(sentence):
-                # Find the exact word in the sentence_text starting from the current word_offset
-                original_word_start_in_sentence = sentence_text.find(word, word_offset)
+                # Iterate through map keys to find a matching span starting here
+                # We check all spans for efficiency, though ideally we'd only check spans in the current sentence
+                # The key lookup `entity_mask_map.get((sent_idx, token_idx_in_sentence, end_candidate), None)` could be more direct if we knew the end,
+                # but iterating keys allows finding any valid span starting here.
+                # A more optimized approach might group entity_mask_map by (sent_idx, start_token_idx)
+                found_span_key = None
+                for span_key in entity_mask_map:
+                    s_idx, start_t_idx, end_t_idx = span_key
+                    # Check if this span belongs to the current sentence and starts at the current token index
+                    if s_idx == sent_idx and start_t_idx == token_idx_in_sentence:
+                        # Found a mention span starting here
+                        found_span_key = span_key
+                        mask_info = entity_mask_map[found_span_key]
+                        span_end_token_idx = end_t_idx # This is the inclusive end token index
+                        # If there are overlapping spans starting at the same token,
+                        # this will pick one based on dictionary iteration order.
+                        # For simplicity, we'll just take the first one found.
+                        break # Found a span starting here, no need to check others for this token_idx_in_sentence
 
-                if original_word_start_in_sentence != -1:
-                    original_word_end_in_sentence = original_word_start_in_sentence + len(word)
 
-                    if word in used_names_in_item:
-                        masked_token = used_names_in_item[word]
-                        # Create the mask detail corresponding to the MaskResult structure
-                        mask_detail = {
-                            "label": word,          # The content inside the mask (original name)
-                            "text": word,           # The matched text from the original record (original name)
-                            "start": current_offset + original_word_start_in_sentence, # Start index in the original text record
-                            "end": current_offset + original_word_end_in_sentence,     # End index in the original text record
-                            "masked_text": masked_token # The original mask string
-                        }
-                        masks.append(mask_detail)
-                        masked_sentence.append(masked_token)
-                    else:
-                        masked_sentence.append(word)
+                if found_span_key is not None:
+                    # We are at the start of a mention span
+                    char_start = token_char_offsets[sent_idx][token_idx_in_sentence][0]
+                    char_end = token_char_offsets[sent_idx][span_end_token_idx][1] # End of the last token in the span
 
-                    # Update word_offset for the next search within the sentence_text
-                    word_offset = original_word_end_in_sentence + (1 if i < len(sentence) - 1 else 0) # +1 for space if not the last word
+                    # Add the masked token to the masked sentence
+                    masked_sentence.append(mask_info["masked_token_str"])
+
+                    # Create the mask detail
+                    mask_detail = {
+                        "label": f"{mask_info['entity_type'].upper()} {mask_info['mention_id']}", # Use entity type and assigned mention ID
+                        "text": mask_info["original_name"],   # Original entity name
+                        "start": char_start,                 # Character start offset
+                        "end": char_end,                     # Character end offset
+                        "masked_text": mask_info["masked_token_str"] # The generated mask string
+                    }
+                    masks.append(mask_detail)
+
+                    # Advance the token_idx_in_sentence past the end of the masked span
+                    token_idx_in_sentence = span_end_token_idx + 1
+
                 else:
-                    # If the word was not found, append it as is and move offset past it
-                    masked_sentence.append(word)
-                    word_offset += len(word) + (1 if i < len(sentence) - 1 else 0)
-
+                    # If the current token is NOT the start of a mention span, keep the original token
+                    masked_sentence.append(sentence[token_idx_in_sentence])
+                    token_idx_in_sentence += 1 # Move to the next token
 
             masked_sents.append(' '.join(masked_sentence))
-            # Update current_offset for the next sentence
-            current_offset += len(sentence_text) + (1 if sents.index(sentence) < len(sents) - 1 else 0) # +1 for space between sentences if not the last sentence
 
 
         masked_item_text = ' '.join(masked_sents)
@@ -148,5 +222,6 @@ def pseudo_de_identify_docred_single_file(data_file, output_file):
         print(f"Error: Could not write to output file {output_file}. Reason: {e}")
 
 
-# --- Execute the function ---
-pseudo_de_identify_docred_single_file(data_file, output_file)
+if __name__ == "__main__":
+    # --- Execute the function ---
+    pseudo_de_identify_docred_single_file(data_file, output_file)

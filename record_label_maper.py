@@ -30,10 +30,7 @@ LABEL_MEMBERSHIP : Dict[str, List[Union[str, List[str]]]]= {
                 ]
             ],
             ['DATE', ['DATE', 'DATEYEAR']],
-            [
-                'CONTACT',
-                ['EMAIL', 'FAX', 'PHONE', 'CONTACT', 'IPADDR', 'IPADDRESS']
-            ], ['O', ['O']]
+            ['O', ['O']]
         ],
     'hipaa':
         [
@@ -168,7 +165,7 @@ def simplify_label_string(label: str, mapping_group: str = "simple") -> str:
 
     sim_label = "O"
     def is_valid_date_string(s: str) -> bool:
-        pattern = r'^(?:\d{1,4}-){0,2}\d{1,4}$'
+        pattern = r'^(?:\d{2}-\d{2}|\d{4}|\d{4}-\d{2}-\d{2})$'
         if re.match(pattern, s):
             digits_only = re.sub(r'\D', '', s)
             return 3 <= len(digits_only) <= 8

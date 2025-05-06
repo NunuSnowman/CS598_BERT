@@ -76,6 +76,11 @@ def pseudo_de_identify_docred_single_file(data_file, output_file):
         entity_mask_map = {}
         mention_counter = 1 # Counter for generating unique IDs for each mention
 
+        mapping = {
+            'PER': 'NAME',
+            'LOC': 'LOCATION',
+            'TIME': 'DATE'
+        }
         for vertex_list in vertex_set:
             for vertex in vertex_list:
                 entity_type = vertex.get('type')
@@ -86,11 +91,6 @@ def pseudo_de_identify_docred_single_file(data_file, output_file):
                 mention_pos_list = vertex.get('pos') # This should be the list like [[start, end+1]]
 
                 # We only mask PER, LOC, TIME and need valid sent_id and pos list
-                mapping = {
-                    'PER': 'NAME',
-                    'LOC': 'LOCATION',
-                    'TIME': 'DATE'
-                }
                 if entity_type in ['PER', 'LOC', 'TIME']:
                     # Validate sent_id
                     if not isinstance(mention_sent_id, int) or mention_sent_id < 0 or mention_sent_id >= len(sents):
@@ -182,7 +182,7 @@ def pseudo_de_identify_docred_single_file(data_file, output_file):
 
                     # Create the mask detail
                     mask_detail = {
-                        "label": f"{mask_info['entity_type'].upper()} {mask_info['mention_id']}", # Use entity type and assigned mention ID
+                        "label": f"{mapping[mask_info['entity_type'].upper()]} {mask_info['mention_id']}", # Use entity type and assigned mention ID
                         "text": mask_info["original_name"],   # Original entity name
                         "start": char_start,                 # Character start offset
                         "end": char_end,                     # Character end offset

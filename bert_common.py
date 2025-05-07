@@ -21,6 +21,7 @@ SAVE_MODEL_EVERY_N_EPOCH = 0
 bert_print_debug_log = False
 model_name = 'bert-base-uncased'
 use_multiple_classes = True
+use_crossing_entropy_loss = True
 multi_class_label_map = {'O': 0, 'B-NAME': 1, 'I-NAME': 2,
                          'B-LOCATION': 3, 'I-LOCATION': 4,
                          'B-DATE': 5, 'I-DATE': 6, 'B-CONTACT': 7, 'I-CONTACT': 8, }

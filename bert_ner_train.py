@@ -1,5 +1,6 @@
 import os
 
+import torch.nn.functional as F
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from transformers import BertTokenizerFast, BertForTokenClassification, get_linear_schedule_with_warmup
@@ -9,7 +10,11 @@ import bert_common
 from bert_common import ProcessedRecord, MAX_LENGTH, BATCH_SIZE, NUM_EPOCHS, \
     LEARNING_RATE, SAVE_DIRECTORY, \
     process_data_label, SAVE_MODEL_EVERY_N_EPOCH
-
+def focal_loss(logits, labels, alpha=1, gamma=2, ignore_index=-100):
+    ce_loss = F.cross_entropy(logits.view(-1, logits.size(-1)), labels.view(-1), reduction='none', ignore_index=ignore_index)
+    pt = torch.exp(-ce_loss)
+    focal_loss = alpha * (1 - pt) ** gamma * ce_loss
+    return focal_loss.mean()
 
 def train_model(
         data: [ProcessedRecord],
@@ -60,9 +65,12 @@ def train_model(
             outputs = model(**inputs)
 
             # Get the loss (calculated internally by BertForTokenClassification when labels are provided)
-            loss = outputs.loss
+            if bert_common.use_crossing_entropy_loss:
+                loss = outputs.loss
+            else:
+                # loss = asymmetric_focal_loss(outputs.logits, inputs['labels'])
+                loss = focal_loss(outputs.logits, inputs['labels'])
 
-            # Perform a backward pass to calculate gradients
             loss.backward()
 
             optimizer.step()

@@ -1,6 +1,8 @@
+import torch
 from transformers import BertForTokenClassification
 
 import bert_common
+import bert_ner_train
 from bert_common import SAVE_DIRECTORY
 from bert_ner_test import evaluate_model
 from bert_ner_train import train_model
@@ -22,7 +24,12 @@ def run():
 if __name__ == "__main__":
     bert_common.bert_print_debug_log = False
     bert_common.SAVE_MODEL_EVERY_N_EPOCH = 0
-    bert_common.use_crossing_entropy_loss = False
-    print(f"Using model {bert_common.model_name}")
+    bert_common.use_crossing_entropy_loss = bert_ner_train.focal_loss
+
+    print(f"Using focal_loss")
     bert_common.set_classify_type(use_multi_class=False)
+    run()
+
+    bert_common.use_crossing_entropy_loss = bert_ner_train.asymmetric_focal_loss
+    print(f"Using asymmetric_focal_loss")
     run()

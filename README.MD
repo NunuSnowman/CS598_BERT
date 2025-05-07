@@ -20,14 +20,16 @@ How to download DocRED data (optional)
 Follow instructions here
 https://github.com/thunlp/DocRED/tree/master/data
 
+Put data in this folder
 ```
-./downloaded/DocRED_baseline_metadata
-./downloaded/DocRED_baseline_metadata/rel2id.json
-./downloaded/DocRED_baseline_metadata/word2id.json
-./downloaded/DocRED_baseline_metadata/char_vec.npy
-./downloaded/DocRED_baseline_metadata/char2id.json
-./downloaded/DocRED_baseline_metadata/vec.npy
-./downloaded/DocRED_baseline_metadata/ner2id.json
+./downloaded/DocRED
+./downloaded/DocRED/data/rel_info.json
+./downloaded/DocRED/data/test.json
+./downloaded/DocRED/data/dev.json
+./downloaded/DocRED/data/README.md
+./downloaded/DocRED/data/train_distant.json
+./downloaded/DocRED/data/train_annotated.json
+
 
 ```
 
